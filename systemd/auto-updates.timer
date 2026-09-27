@@ -1,0 +1,13 @@
+[Unit]
+Description=Daily Auto-Updates Timer (dnf-automatic)
+Documentation=https://github.com/steve-rock-wheelhouser/auto-updates
+ConditionPathExists=!/run/ostree-booted
+Wants=network-online.target
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+RandomizedDelaySec=0
+
+[Install]
+WantedBy=timers.target

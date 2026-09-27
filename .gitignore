@@ -1,0 +1,35 @@
+# Build and packaging artifacts
+build/
+dist/
+*.tar.gz
+*.rpm
+*.src.rpm
+
+# RPM temporary spec build dirs
+BUILD/
+BUILDROOT/
+RPMS/
+SOURCES/
+SPECS/
+SRPMS/
+
+# Logs and runtime data
+*.log
+*.pid
+
+# Temporary and backup files
+*~
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# IDE and Editor configurations
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace

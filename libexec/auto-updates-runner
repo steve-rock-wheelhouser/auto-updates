@@ -1,0 +1,224 @@
+#!/bin/bash
+# ==============================================================================
+# auto-updates-runner
+# Systemd service runner script for automated package updates.
+# Supports Fedora, Rocky Linux, AlmaLinux, RHEL, and CentOS Stream.
+#
+# Copyright (C) 2026 Steve Rock Wheelhouser <steve@wheelhouser.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# ==============================================================================
+
+set -euo pipefail
+
+# Ensure standard system tools are in PATH
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
+
+CONF_FILE="/etc/auto-updates/auto-updates.conf"
+DNF_AUTO_CONF="/etc/dnf/automatic.conf"
+
+# Default configuration values
+MODE="security"
+SCHEDULE_TIME="03:30"
+WEEKLY_DAY="Sun"
+RANDOM_SLEEP="10"
+REBOOT="never"
+EMIT_VIA="stdio"
+LOG_FILE="/var/log/auto-updates.log"
+
+# Load system configuration if present
+if [ -f "$CONF_FILE" ]; then
+    # shellcheck source=/dev/null
+    source "$CONF_FILE"
+fi
+
+# Ensure log directory exists
+mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
+touch "$LOG_FILE" 2>/dev/null || true
+
+log() {
+    local level="$1"
+    shift
+    local msg="[$(date '+%Y-%m-%d %H:%M:%S')] [$level] $*"
+    echo "$msg"
+    echo "$msg" >> "$LOG_FILE" 2>/dev/null || true
+}
+
+# Parse runner flags
+OVERRIDE_TYPE=""
+DRY_RUN=false
+SKIP_SLEEP=false
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --force-security)
+            OVERRIDE_TYPE="security"
+            SKIP_SLEEP=true
+            shift
+            ;;
+        --force-all)
+            OVERRIDE_TYPE="default"
+            SKIP_SLEEP=true
+            shift
+            ;;
+        --dry-run)
+            DRY_RUN=true
+            SKIP_SLEEP=true
+            shift
+            ;;
+        --no-sleep)
+            SKIP_SLEEP=true
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
+# Determine update type (security vs default/all)
+CURRENT_DAY="$(date +%a)"
+if [ -n "$OVERRIDE_TYPE" ]; then
+    UPGRADE_TYPE="$OVERRIDE_TYPE"
+    REASON="Manually forced $UPGRADE_TYPE update"
+elif [ "$MODE" = "all" ]; then
+    if [ "$CURRENT_DAY" = "$WEEKLY_DAY" ]; then
+        UPGRADE_TYPE="default"
+        REASON="Weekly full update ($CURRENT_DAY matched WEEKLY_DAY)"
+    else
+        UPGRADE_TYPE="security"
+        REASON="Daily security update (weekly full update scheduled on $WEEKLY_DAY)"
+    fi
+elif [ "$MODE" = "daily-all" ]; then
+    UPGRADE_TYPE="default"
+    REASON="Daily full update"
+else
+    UPGRADE_TYPE="security"
+    REASON="Daily security update"
+fi
+
+# Optional random delay to avoid thundering herd problem
+if [ "$SKIP_SLEEP" = false ] && [ "$RANDOM_SLEEP" -gt 0 ]; then
+    JITTER=$(( RANDOM % RANDOM_SLEEP ))
+    log "INFO" "Applying random delay of ${JITTER}s (max: ${RANDOM_SLEEP}s)..."
+    sleep "$JITTER"
+fi
+
+log "INFO" "Starting Auto-Updates run. Target: $UPGRADE_TYPE ($REASON)"
+
+# Helper function to set key = value in INI file
+set_ini_val() {
+    local file="$1"
+    local key="$2"
+    local val="$3"
+    local section="${4:-commands}"
+
+    if [ ! -f "$file" ]; then
+        mkdir -p "$(dirname "$file")"
+        cat <<EOF > "$file"
+[$section]
+$key = $val
+EOF
+        return 0
+    fi
+
+    if grep -q -E "^[#[:space:]]*${key}[[:space:]]*=" "$file"; then
+        sed -i -E "s|^[#[:space:]]*${key}[[:space:]]*=.*|${key} = ${val}|" "$file"
+    else
+        if grep -q -E "^\[${section}\]" "$file"; then
+            sed -i -E "/^\[${section}\]/a ${key} = ${val}" "$file"
+        else
+            echo "" >> "$file"
+            echo "[$section]" >> "$file"
+            echo "${key} = ${val}" >> "$file"
+        fi
+    fi
+}
+
+# Update /etc/dnf/automatic.conf to match current execution parameters
+if [ "$DRY_RUN" = true ]; then
+    set_ini_val "$DNF_AUTO_CONF" "apply_updates" "no" "commands"
+    set_ini_val "$DNF_AUTO_CONF" "download_updates" "yes" "commands"
+else
+    set_ini_val "$DNF_AUTO_CONF" "apply_updates" "yes" "commands"
+    set_ini_val "$DNF_AUTO_CONF" "download_updates" "yes" "commands"
+fi
+set_ini_val "$DNF_AUTO_CONF" "upgrade_type" "$UPGRADE_TYPE" "commands"
+set_ini_val "$DNF_AUTO_CONF" "random_sleep" "0" "commands"
+set_ini_val "$DNF_AUTO_CONF" "emit_via" "$EMIT_VIA" "emitters"
+
+# Execute DNF Automatic update
+EXEC_START=$(date +%s)
+STATUS=0
+
+if command -v dnf5 &>/dev/null && dnf5 automatic --help &>/dev/null; then
+    log "INFO" "Using backend: DNF5 automatic"
+    if [ "$DRY_RUN" = true ]; then
+        dnf5 automatic --no-installupdates 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+    else
+        dnf5 automatic --installupdates 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+    fi
+elif command -v dnf-automatic &>/dev/null; then
+    log "INFO" "Using backend: DNF4 dnf-automatic"
+    if [ "$DRY_RUN" = true ]; then
+        dnf-automatic "$DNF_AUTO_CONF" --downloadupdates 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+    else
+        dnf-automatic "$DNF_AUTO_CONF" --installupdates 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+    fi
+else
+    # Fallback to direct dnf invocation
+    log "WARN" "dnf-automatic command not found; falling back to direct dnf invocation"
+    if [ "$UPGRADE_TYPE" = "security" ]; then
+        if [ "$DRY_RUN" = true ]; then
+            dnf check-upgrade --security 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+        else
+            dnf upgrade -y --security 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+        fi
+    else
+        if [ "$DRY_RUN" = true ]; then
+            dnf check-upgrade 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+        else
+            dnf upgrade -y 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+        fi
+    fi
+fi
+
+EXEC_END=$(date +%s)
+DURATION=$(( EXEC_END - EXEC_START ))
+
+# Check result (exit codes 0 and 100 for check-update mean success)
+if [ "$STATUS" -eq 0 ] || [ "$STATUS" -eq 100 ]; then
+    log "SUCCESS" "Auto-Updates run completed successfully in ${DURATION}s. (Exit code: $STATUS)"
+else
+    log "ERROR" "Auto-Updates run failed with exit code $STATUS after ${DURATION}s."
+    exit "$STATUS"
+fi
+
+# Check reboot policy if updates were applied
+if [ "$DRY_RUN" = false ]; then
+    REBOOT_NEEDED=false
+    if [ "$REBOOT" = "when-needed" ]; then
+        if command -v dnf5 &>/dev/null && dnf5 needs-restarting --help &>/dev/null; then
+            if ! dnf5 needs-restarting -r &>/dev/null; then
+                REBOOT_NEEDED=true
+            fi
+        elif command -v needs-restarting &>/dev/null; then
+            if ! needs-restarting -r &>/dev/null; then
+                REBOOT_NEEDED=true
+            fi
+        fi
+    elif [ "$REBOOT" = "when-changed" ]; then
+        # Check if packages were updated in this transaction
+        REBOOT_NEEDED=true
+    fi
+
+    if [ "$REBOOT_NEEDED" = true ]; then
+        log "WARN" "System reboot required according to policy ($REBOOT). Scheduling reboot in 5 minutes..."
+        shutdown -r +5 "System rebooting in 5 minutes to complete package updates." 2>&1 | tee -a "$LOG_FILE" || true
+    fi
+fi
+
+exit 0

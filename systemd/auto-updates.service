@@ -1,0 +1,18 @@
+[Unit]
+Description=Auto-Updates Service (dnf-automatic)
+Documentation=https://github.com/steve-rock-wheelhouser/auto-updates
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=!/run/ostree-booted
+
+[Service]
+Type=oneshot
+Nice=19
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+ExecStart=/usr/libexec/auto-updates-runner
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target

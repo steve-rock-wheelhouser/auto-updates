@@ -1,0 +1,480 @@
+#!/bin/bash
+# ==============================================================================
+# auto-updates
+# CLI management utility for automated package updates.
+# Supports Fedora, Rocky Linux, AlmaLinux, RHEL, and CentOS Stream.
+#
+# Copyright (C) 2026 Steve Rock Wheelhouser <steve@wheelhouser.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# ==============================================================================
+
+set -euo pipefail
+
+VERSION="1.0.2"
+CONF_FILE="/etc/auto-updates/auto-updates.conf"
+DNF_AUTO_CONF="/etc/dnf/automatic.conf"
+RUNNER_BIN="/usr/libexec/auto-updates-runner"
+TIMER_UNIT="auto-updates.timer"
+SERVICE_UNIT="auto-updates.service"
+LOG_FILE="/var/log/auto-updates.log"
+DROPIN_DIR="/etc/systemd/system/${TIMER_UNIT}.d"
+DROPIN_FILE="${DROPIN_DIR}/schedule.conf"
+
+# Text styles and colors
+if [ -t 1 ]; then
+    BOLD="\033[1m"
+    RESET="\033[0m"
+    GREEN="\033[32m"
+    YELLOW="\033[33m"
+    BLUE="\033[34m"
+    CYAN="\033[36m"
+    RED="\033[31m"
+else
+    BOLD=""
+    RESET=""
+    GREEN=""
+    YELLOW=""
+    BLUE=""
+    CYAN=""
+    RED=""
+fi
+
+# Load existing configuration or defaults
+load_config() {
+    MODE="security"
+    SCHEDULE_TIME="03:30"
+    WEEKLY_DAY="Sun"
+    RANDOM_SLEEP="10"
+    REBOOT="never"
+    EMIT_VIA="stdio"
+    LOG_FILE="/var/log/auto-updates.log"
+
+    if [ -f "$CONF_FILE" ]; then
+        # shellcheck source=/dev/null
+        source "$CONF_FILE"
+    fi
+}
+
+require_root() {
+    if [ "$EUID" -ne 0 ]; then
+        if command -v sudo &>/dev/null; then
+            exec sudo "$0" "$@"
+        else
+            echo -e "${RED}[ERROR] This operation requires root privileges.${RESET}" >&2
+            exit 1
+        fi
+    fi
+}
+
+# Helper to update key in config file
+set_conf_key() {
+    local key="$1"
+    local val="$2"
+    mkdir -p "$(dirname "$CONF_FILE")"
+    if [ ! -f "$CONF_FILE" ]; then
+        echo "${key}=${val}" > "$CONF_FILE"
+    elif grep -q -E "^[#[:space:]]*${key}=" "$CONF_FILE"; then
+        sed -i -E "s|^[#[:space:]]*${key}=.*|${key}=${val}|" "$CONF_FILE"
+    else
+        echo "${key}=${val}" >> "$CONF_FILE"
+    fi
+}
+
+# Helper to update key in INI file
+set_ini_key() {
+    local file="$1"
+    local section="$2"
+    local key="$3"
+    local val="$4"
+
+    if [ ! -f "$file" ]; then
+        mkdir -p "$(dirname "$file")"
+        cat <<EOF > "$file"
+[$section]
+$key = $val
+EOF
+        return 0
+    fi
+
+    if grep -q -E "^[#[:space:]]*${key}[[:space:]]*=" "$file"; then
+        sed -i -E "s|^[#[:space:]]*${key}[[:space:]]*=.*|${key} = ${val}|" "$file"
+    else
+        if grep -q -E "^\[${section}\]" "$file"; then
+            sed -i -E "/^\[${section}\]/a ${key} = ${val}" "$file"
+        else
+            echo "" >> "$file"
+            echo "[$section]" >> "$file"
+            echo "${key} = ${val}" >> "$file"
+        fi
+    fi
+}
+
+cmd_status() {
+    load_config
+
+    echo -e "${BOLD}${CYAN}================================================================${RESET}"
+    echo -e "${BOLD}${CYAN}                      Auto-Updates Status                       ${RESET}"
+    echo -e "${BOLD}${CYAN}================================================================${RESET}"
+
+    # Timer status
+    local timer_active="inactive (disabled)"
+    local timer_color="$RED"
+    if systemctl is-active --quiet "$TIMER_UNIT" 2>/dev/null; then
+        timer_active="active (running)"
+        timer_color="$GREEN"
+    fi
+
+    local timer_enabled="disabled"
+    if systemctl is-enabled --quiet "$TIMER_UNIT" 2>/dev/null; then
+        timer_enabled="enabled"
+    fi
+
+    printf "  ${BOLD}%-24s${RESET} : ${timer_color}%s${RESET} (%s)\n" "Timer Status" "$timer_active" "$timer_enabled"
+
+    # Current mode
+    local mode_desc=""
+    case "$MODE" in
+        security)
+            mode_desc="Daily Security Updates Only"
+            ;;
+        all)
+            mode_desc="Daily Security + Weekly Full Updates"
+            ;;
+        daily-all)
+            mode_desc="Daily Full Updates (All Packages Every Day)"
+            ;;
+        *)
+            mode_desc="Custom ($MODE)"
+            ;;
+    esac
+    printf "  ${BOLD}%-24s${RESET} : ${YELLOW}%s${RESET} (%s)\n" "Configured Mode" "$MODE" "$mode_desc"
+    printf "  ${BOLD}%-24s${RESET} : %s (Local system time)\n" "Daily Schedule Time" "$SCHEDULE_TIME"
+
+    if [ "$MODE" = "all" ]; then
+        local full_day_name=""
+        case "$WEEKLY_DAY" in
+            Sun) full_day_name="Sunday" ;;
+            Mon) full_day_name="Monday" ;;
+            Tue) full_day_name="Tuesday" ;;
+            Wed) full_day_name="Wednesday" ;;
+            Thu) full_day_name="Thursday" ;;
+            Fri) full_day_name="Friday" ;;
+            Sat) full_day_name="Saturday" ;;
+            *)   full_day_name="$WEEKLY_DAY" ;;
+        esac
+        printf "  ${BOLD}%-24s${RESET} : %s (at %s)\n" "Weekly Full Update Day" "$full_day_name" "$SCHEDULE_TIME"
+    fi
+
+    # Next run details from systemd
+    local next_run=""
+    next_run=$(systemctl show "$TIMER_UNIT" --property=NextElapseUSecRealtime --value 2>/dev/null || true)
+    if [ -n "$next_run" ] && [ "$next_run" != "n/a" ]; then
+        printf "  ${BOLD}%-24s${RESET} : ${GREEN}%s${RESET}\n" "Next Scheduled Run" "$next_run"
+
+        # Determine target for next run
+        local next_dow
+        next_dow=$(echo "$next_run" | awk '{print $1}')
+        if [ "$MODE" = "all" ] && [ "$next_dow" = "$WEEKLY_DAY" ]; then
+            printf "  ${BOLD}%-24s${RESET} : ${YELLOW}%s${RESET}\n" "Next Run Action" "Weekly Full System Update (all packages)"
+        elif [ "$MODE" = "daily-all" ]; then
+            printf "  ${BOLD}%-24s${RESET} : %s\n" "Next Run Action" "Daily Full System Update (all packages)"
+        else
+            printf "  ${BOLD}%-24s${RESET} : %s\n" "Next Run Action" "Daily Security Updates Only"
+        fi
+    else
+        printf "  ${BOLD}%-24s${RESET} : %s\n" "Next Scheduled Run" "None (timer not running)"
+    fi
+
+    # Backend detection
+    local backend="Unknown"
+    if command -v dnf5 &>/dev/null && dnf5 automatic --help &>/dev/null; then
+        backend="DNF5 Plugin Automatic (/usr/bin/dnf5)"
+    elif command -v dnf-automatic &>/dev/null; then
+        backend="DNF4 Automatic (/usr/bin/dnf-automatic)"
+    elif command -v dnf &>/dev/null; then
+        backend="Standard DNF CLI (/usr/bin/dnf)"
+    fi
+    printf "  ${BOLD}%-24s${RESET} : %s\n" "Update Backend" "$backend"
+    printf "  ${BOLD}%-24s${RESET} : %s\n" "Reboot Policy" "$REBOOT"
+    printf "  ${BOLD}%-24s${RESET} : %s\n" "Log File" "$LOG_FILE"
+
+    # Last execution info
+    if [ -f "$LOG_FILE" ] && [ -s "$LOG_FILE" ]; then
+        local last_log
+        last_log=$(tail -n 1 "$LOG_FILE" 2>/dev/null || true)
+        printf "  ${BOLD}%-24s${RESET} : %s\n" "Last Log Entry" "$last_log"
+    fi
+
+    echo -e "${BOLD}${CYAN}================================================================${RESET}"
+}
+
+cmd_set_mode() {
+    local target_mode="${1:-}"
+    if [ -z "$target_mode" ]; then
+        echo -e "${RED}[ERROR] Missing mode argument. Usage: auto-updates mode [security|all|daily-all]${RESET}" >&2
+        exit 1
+    fi
+
+    case "$target_mode" in
+        security|sec)
+            require_root "mode" "security"
+            set_conf_key "MODE" "security"
+            set_ini_key "$DNF_AUTO_CONF" "commands" "upgrade_type" "security"
+            echo -e "${GREEN}${BOLD}[SUCCESS] Mode updated to: security${RESET}"
+            echo -e "  - Daily security updates will run at ${BOLD}${SCHEDULE_TIME:-03:30}${RESET} local time."
+            echo -e "  - Non-security updates are ${BOLD}disabled${RESET}."
+            ;;
+        all)
+            require_root "mode" "all"
+            set_conf_key "MODE" "all"
+            echo -e "${GREEN}${BOLD}[SUCCESS] Mode updated to: all${RESET}"
+            echo -e "  - Daily security updates will run every day at ${BOLD}${SCHEDULE_TIME:-03:30}${RESET} local time."
+            echo -e "  - Full updates (security + non-security) will run every ${BOLD}${WEEKLY_DAY:-Sun}${RESET} at ${BOLD}${SCHEDULE_TIME:-03:30}${RESET} local time."
+            ;;
+        daily-all)
+            require_root "mode" "daily-all"
+            set_conf_key "MODE" "daily-all"
+            set_ini_key "$DNF_AUTO_CONF" "commands" "upgrade_type" "default"
+            echo -e "${YELLOW}${BOLD}[SUCCESS] Mode updated to: daily-all${RESET}"
+            echo -e "  - All updates will be applied every day at ${BOLD}${SCHEDULE_TIME:-03:30}${RESET} local time."
+            ;;
+        *)
+            echo -e "${RED}[ERROR] Invalid mode: '$target_mode'. Valid options: security, all, daily-all.${RESET}" >&2
+            exit 1
+            ;;
+    esac
+}
+
+cmd_enable() {
+    require_root "enable"
+    systemctl daemon-reload
+    systemctl enable --now "$TIMER_UNIT"
+    echo -e "${GREEN}${BOLD}[SUCCESS] Auto-Updates timer enabled and started.${RESET}"
+    cmd_status
+}
+
+cmd_disable() {
+    require_root "disable"
+    systemctl disable --now "$TIMER_UNIT"
+    echo -e "${YELLOW}${BOLD}[SUCCESS] Auto-Updates timer stopped and disabled.${RESET}"
+}
+
+cmd_run() {
+    require_root "run" "$@"
+    local runner_args=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --security)
+                runner_args+=(--force-security)
+                shift
+                ;;
+            --all)
+                runner_args+=(--force-all)
+                shift
+                ;;
+            --no-sleep)
+                runner_args+=(--no-sleep)
+                shift
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+
+    echo -e "${BLUE}${BOLD}[INFO] Executing manual Auto-Updates run...${RESET}"
+    if [ -x "$RUNNER_BIN" ]; then
+        "$RUNNER_BIN" "${runner_args[@]}"
+    elif [ -x "./libexec/auto-updates-runner" ]; then
+        ./libexec/auto-updates-runner "${runner_args[@]}"
+    else
+        echo -e "${RED}[ERROR] Runner executable not found at $RUNNER_BIN${RESET}" >&2
+        exit 1
+    fi
+}
+
+cmd_check() {
+    echo -e "${BLUE}${BOLD}[INFO] Checking for available updates (dry run)...${RESET}"
+    if [ -x "$RUNNER_BIN" ]; then
+        require_root "check"
+        "$RUNNER_BIN" --dry-run
+    elif [ -x "./libexec/auto-updates-runner" ]; then
+        require_root "check"
+        ./libexec/auto-updates-runner --dry-run
+    else
+        if command -v dnf5 &>/dev/null; then
+            dnf5 check-upgrade --security || true
+        else
+            dnf check-upgrade --security || true
+        fi
+    fi
+}
+
+cmd_set_time() {
+    local new_time="${1:-}"
+    if [[ ! "$new_time" =~ ^([01][0-9]|2[0-3]):[0-5][0-9]$ ]]; then
+        echo -e "${RED}[ERROR] Invalid time format '$new_time'. Expected HH:MM (24-hour, e.g. 03:30 or 21:00).${RESET}" >&2
+        exit 1
+    fi
+
+    require_root "set-time" "$new_time"
+    set_conf_key "SCHEDULE_TIME" "$new_time"
+
+    # Create/update systemd drop-in override
+    mkdir -p "$DROPIN_DIR"
+    cat <<EOF > "$DROPIN_FILE"
+[Timer]
+OnCalendar=
+OnCalendar=*-*-* ${new_time}:00
+EOF
+
+    systemctl daemon-reload
+    if systemctl is-active --quiet "$TIMER_UNIT"; then
+        systemctl restart "$TIMER_UNIT"
+    fi
+
+    echo -e "${GREEN}${BOLD}[SUCCESS] Schedule time updated to ${new_time} (local time).${RESET}"
+    cmd_status
+}
+
+cmd_set_day() {
+    local new_day="${1:-}"
+    case "$new_day" in
+        Sun|Sunday)       new_day="Sun" ;;
+        Mon|Monday)      new_day="Mon" ;;
+        Tue|Tuesday)     new_day="Tue" ;;
+        Wed|Wednesday)   new_day="Wed" ;;
+        Thu|Thursday)    new_day="Thu" ;;
+        Fri|Friday)      new_day="Fri" ;;
+        Sat|Saturday)    new_day="Sat" ;;
+        *)
+            echo -e "${RED}[ERROR] Invalid day '$new_day'. Valid options: Sun, Mon, Tue, Wed, Thu, Fri, Sat.${RESET}" >&2
+            exit 1
+            ;;
+    esac
+
+    require_root "set-day" "$new_day"
+    set_conf_key "WEEKLY_DAY" "$new_day"
+
+    echo -e "${GREEN}${BOLD}[SUCCESS] Weekly full update day updated to: ${new_day}.${RESET}"
+    load_config
+    if [ "$MODE" != "all" ]; then
+        echo -e "${YELLOW}[NOTE] Current mode is '$MODE'. The weekly day will take effect when mode is set to 'all'.${RESET}"
+    fi
+}
+
+cmd_logs() {
+    load_config
+    local count="${1:-40}"
+    if [ -f "$LOG_FILE" ] && [ -s "$LOG_FILE" ]; then
+        echo -e "${BOLD}${CYAN}--- Auto-Updates Log: $LOG_FILE (Last $count lines) ---${RESET}"
+        tail -n "$count" "$LOG_FILE"
+    else
+        echo -e "${BOLD}${CYAN}--- Systemd Journal: $SERVICE_UNIT ---${RESET}"
+        journalctl -u "$SERVICE_UNIT" -n "$count" --no-pager || true
+    fi
+}
+
+cmd_help() {
+    load_config
+    echo -e "${BOLD}auto-updates${RESET} - CLI and systemd automated updater (v${VERSION})
+
+${BOLD}USAGE:${RESET}
+  auto-updates [COMMAND|OPTION]
+
+${BOLD}COMMANDS:${RESET}
+  ${GREEN}status${RESET}                       Show current configuration, timer status, and next scheduled run
+  ${GREEN}mode <security|all|daily-all>${RESET} Set the update mode:
+                                 ${BOLD}security${RESET}  : Daily security updates only (default)
+                                 ${BOLD}all${RESET}       : Daily security + weekly full updates (${WEEKLY_DAY:-Sun})
+                                 ${BOLD}daily-all${RESET} : Full updates every day
+  ${GREEN}enable${RESET}                       Enable and start the systemd timer
+  ${GREEN}disable${RESET}                      Stop and disable the systemd timer
+  ${GREEN}run [--security|--all]${RESET}       Trigger an immediate update execution
+  ${GREEN}check${RESET}                        Check for available updates without installing (dry run)
+  ${GREEN}set-time <HH:MM>${RESET}             Change daily update time (24h local time, e.g. 03:30)
+  ${GREEN}set-day <Day>${RESET}                Change weekly full-update day (e.g. Sun, Sat)
+  ${GREEN}logs [N]${RESET}                     View the last N log lines (default: 40)
+  ${GREEN}help${RESET}                         Show this help documentation
+  ${GREEN}version${RESET}                      Show version information
+
+${BOLD}SHORTCUT OPTIONS:${RESET}
+  -s, --status                 Alias for 'status'
+  --security                   Alias for 'mode security'
+  --all                        Alias for 'mode all'
+  -e, --enable                 Alias for 'enable'
+  -d, --disable                Alias for 'disable'
+  -r, --run                    Alias for 'run'
+  -c, --check                  Alias for 'check'
+  -l, --logs [N]               Alias for 'logs'
+  -h, --help                   Alias for 'help'
+  -v, --version                Alias for 'version'
+
+${BOLD}EXAMPLES:${RESET}
+  auto-updates status
+  sudo auto-updates mode all
+  sudo auto-updates set-time 04:00
+  sudo auto-updates run --security
+  auto-updates logs 20"
+}
+
+cmd_version() {
+    echo "auto-updates version ${VERSION}"
+}
+
+# Main entry point
+load_config
+
+ACTION="${1:-status}"
+shift || true
+
+case "$ACTION" in
+    status|-s|--status)
+        cmd_status
+        ;;
+    mode)
+        cmd_set_mode "$@"
+        ;;
+    --security)
+        cmd_set_mode "security"
+        ;;
+    --all)
+        cmd_set_mode "all"
+        ;;
+    enable|-e|--enable)
+        cmd_enable
+        ;;
+    disable|-d|--disable)
+        cmd_disable
+        ;;
+    run|-r|--run)
+        cmd_run "$@"
+        ;;
+    check|-c|--check)
+        cmd_check
+        ;;
+    set-time|time)
+        cmd_set_time "$@"
+        ;;
+    set-day|day)
+        cmd_set_day "$@"
+        ;;
+    logs|log|-l|--logs)
+        cmd_logs "$@"
+        ;;
+    help|-h|--help)
+        cmd_help
+        ;;
+    version|-v|--version)
+        cmd_version
+        ;;
+    *)
+        echo -e "${RED}[ERROR] Unknown command or option: '$ACTION'${RESET}" >&2
+        echo "Run 'auto-updates help' for available commands." >&2
+        exit 1
+        ;;
+esac
