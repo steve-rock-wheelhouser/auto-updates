@@ -1,8 +1,7 @@
 ---
 ticket_id: "BUG-20260928_212027"
-title: "Installation from repo.wheelhouser.com fails on Ubuntu"
 type: "installation"
-status: "open"
+status: "pending"
 severity: "critical"
 project: "auto-updates"
 package: "auto-updates_1.1.8-1_all.deb"
@@ -15,6 +14,10 @@ commit: "79eb4e1"
 date: "2026-09-28T21:20:27Z"
 closed_at: ""
 resolved_by: ""
+title: "Installation from repo.wheelhouser.com fails on Ubuntu"
+pending_at: "2026-09-28T21:53:56Z"
+fixed_in: "repo:149b888"
+pending_reason: "Streamlined repo.wheelhouser.com and wheelhouser-website with unified one-liner copy commands and automated setup scripts for Ubuntu and Debian repositories"
 ---
 
 # [CRITICAL] Installation from repo.wheelhouser.com fails on Ubuntu
@@ -73,3 +76,8 @@ sudo apt install https://repo.wheelhouser.com/ubuntu/wheelhouser-release.deb
 ## Steps to Reproduce
 1. Launch or verify `auto-updates` on ubuntu 26.04 (x86_64).
 2. Observe reported runtime/installation behavior described above.
+
+
+## Pending Verification [2026-09-28T21:53:56Z]
+- **Fix / Staging Notes**: Streamlined repo.wheelhouser.com and wheelhouser-website with unified one-liner copy commands and automated setup scripts for Ubuntu and Debian repositories
+- **Target Candidate**: `repo:149b888`
