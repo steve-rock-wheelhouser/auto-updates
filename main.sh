@@ -22,6 +22,8 @@
 # 1.0.1 - Integrated GPG signing and verification pipeline into build_rpm.sh
 # 1.0.2 - Relicensed under GNU General Public License v3 (GPL-3.0-or-later)
 #         Prepared repository and .gitignore for public open-source release
+# 1.0.3 - Force remote repository metadata refresh (--refresh / makecache)
+#         before checking and applying updates to ensure timely execution
 # ==============================================================================
 
 set -euo pipefail
@@ -32,9 +34,9 @@ cd "$SCRIPT_DIR"
 show_menu() {
     clear
     echo "================================================================================"
-    echo "                Auto-Updates Management & Build Utility (v1.0.2)                "
+    echo "                Auto-Updates Management & Build Utility (v1.0.3)                "
     echo "================================================================================"
-    echo " 1) Build & Sign RPM Package       (Creates dist/auto-updates-1.0.2-1.noarch.rpm)"
+    echo " 1) Build & Sign RPM Package       (Creates dist/auto-updates-1.0.3-1.noarch.rpm)"
     echo " 2) Install/Upgrade RPM Package    (sudo dnf upgrade dist/auto-updates-*.rpm)"
     echo " 3) Run Local Standalone Install   (Directly installs CLI & systemd units)"
     echo " 4) Check Auto-Updates Status      (auto-updates status)"

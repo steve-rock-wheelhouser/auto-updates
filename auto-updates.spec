@@ -1,5 +1,5 @@
 Name:           auto-updates
-Version:        1.0.2
+Version:        1.0.3
 Release:        1%{?dist}
 Summary:        CLI and automated system updater for Fedora, Rocky Linux, and AlmaLinux
 
@@ -128,6 +128,10 @@ systemctl daemon-reload 2>/dev/null || true
 %ghost %{_localstatedir}/log/auto-updates.log
 
 %changelog
+* Mon Sep 28 2026 Steve Rock Wheelhouser <steve@wheelhouser.com> - 1.0.3-1
+- Force remote repository metadata refresh (--refresh / makecache) before checking and applying updates.
+- Added REFRESH_METADATA configuration option and CLI status visibility.
+
 * Sun Sep 27 2026 Steve Rock Wheelhouser <steve@wheelhouser.com> - 1.0.2-1
 - Relicensed under GNU General Public License v3 (GPL-3.0-or-later).
 - Cleaned and prepared repository structure for public open-source release.

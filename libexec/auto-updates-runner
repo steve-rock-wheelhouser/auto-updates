@@ -28,6 +28,7 @@ RANDOM_SLEEP="10"
 REBOOT="never"
 EMIT_VIA="stdio"
 LOG_FILE="/var/log/auto-updates.log"
+REFRESH_METADATA="true"
 
 # Load system configuration if present
 if [ -f "$CONF_FILE" ]; then
@@ -71,6 +72,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         --no-sleep)
             SKIP_SLEEP=true
+            shift
+            ;;
+        --refresh)
+            REFRESH_METADATA=true
+            shift
+            ;;
+        --no-refresh)
+            REFRESH_METADATA=false
             shift
             ;;
         *)
@@ -154,15 +163,26 @@ set_ini_val "$DNF_AUTO_CONF" "emit_via" "$EMIT_VIA" "emitters"
 EXEC_START=$(date +%s)
 STATUS=0
 
+REFRESH_OPT=""
+if [ "$REFRESH_METADATA" = "true" ]; then
+    REFRESH_OPT="--refresh"
+fi
+
 if command -v dnf5 &>/dev/null && dnf5 automatic --help &>/dev/null; then
-    log "INFO" "Using backend: DNF5 automatic"
+    log "INFO" "Using backend: DNF5 automatic (refresh: ${REFRESH_METADATA})"
     if [ "$DRY_RUN" = true ]; then
-        dnf5 automatic --no-installupdates 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+        # shellcheck disable=SC2086
+        dnf5 $REFRESH_OPT automatic --no-installupdates 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
     else
-        dnf5 automatic --installupdates 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+        # shellcheck disable=SC2086
+        dnf5 $REFRESH_OPT automatic --installupdates 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
     fi
 elif command -v dnf-automatic &>/dev/null; then
-    log "INFO" "Using backend: DNF4 dnf-automatic"
+    log "INFO" "Using backend: DNF4 dnf-automatic (refresh: ${REFRESH_METADATA})"
+    if [ "$REFRESH_METADATA" = "true" ]; then
+        log "INFO" "Refreshing DNF4 repository metadata cache..."
+        dnf makecache --refresh 2>&1 | tee -a "$LOG_FILE" || true
+    fi
     if [ "$DRY_RUN" = true ]; then
         dnf-automatic "$DNF_AUTO_CONF" --downloadupdates 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
     else
@@ -173,15 +193,19 @@ else
     log "WARN" "dnf-automatic command not found; falling back to direct dnf invocation"
     if [ "$UPGRADE_TYPE" = "security" ]; then
         if [ "$DRY_RUN" = true ]; then
-            dnf check-upgrade --security 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+            # shellcheck disable=SC2086
+            dnf $REFRESH_OPT check-upgrade --security 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
         else
-            dnf upgrade -y --security 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+            # shellcheck disable=SC2086
+            dnf $REFRESH_OPT upgrade -y --security 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
         fi
     else
         if [ "$DRY_RUN" = true ]; then
-            dnf check-upgrade 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+            # shellcheck disable=SC2086
+            dnf $REFRESH_OPT check-upgrade 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
         else
-            dnf upgrade -y 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+            # shellcheck disable=SC2086
+            dnf $REFRESH_OPT upgrade -y 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
         fi
     fi
 fi
