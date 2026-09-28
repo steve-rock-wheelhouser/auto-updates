@@ -1,7 +1,7 @@
 ---
 ticket_id: "BUG-20260928_212027"
 title: "Installation from repo.wheelhouser.com fails on Ubuntu"
-type: "marketing"
+type: "installation"
 status: "open"
 severity: "critical"
 project: "auto-updates"
@@ -64,7 +64,7 @@ sudo chmod a+r /etc/apt/keyrings/wheelhouser.gpg && \
 echo "deb [signed-by=/etc/apt/keyrings/wheelhouser.gpg] https://repo.wheelhouser.com/ubuntu/26.04 ./" | sudo tee /etc/apt/sources.list.d/wheelhouser.list && \
 sudo apt update
 Option B: Provide a wheelhouser-release.deb package
-Just like your steve-rock-wheelhouser-release-*.rpm for Rocky/Alma/Fedora, you could provide a .deb package that puts the keyring in /etc/apt/keyrings/ and the .sources file in /etc/apt/sources.list.d/, allowing users to install with:
+Just like your steve-rock-wheelhouser-release-*.rpm for Rocky/Alma/Fedora, you could provide a .deb package that puts the keyring in /etc/apt/keyrings/ wheelhouser.gpg and the .sources file in /etc/apt/sources.list.d/, allowing users to install with:
 
 bash
 sudo apt install https://repo.wheelhouser.com/ubuntu/wheelhouser-release.deb
