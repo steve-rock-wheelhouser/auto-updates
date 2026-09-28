@@ -37,16 +37,30 @@ if [ -f "$CONF_FILE" ]; then
     source "$CONF_FILE"
 fi
 
-# Ensure log directory exists
-mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
-touch "$LOG_FILE" 2>/dev/null || true
+# Determine if log file is writable
+CAN_WRITE_LOG=false
+if [ -w "$LOG_FILE" ] 2>/dev/null || { [ ! -e "$LOG_FILE" ] && [ -w "$(dirname "$LOG_FILE" 2>/dev/null)" ]; } 2>/dev/null; then
+    CAN_WRITE_LOG=true
+    mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
+    touch "$LOG_FILE" 2>/dev/null || true
+fi
 
 log() {
     local level="$1"
     shift
     local msg="[$(date '+%Y-%m-%d %H:%M:%S')] [$level] $*"
     echo "$msg"
-    echo "$msg" >> "$LOG_FILE" 2>/dev/null || true
+    if [ "$CAN_WRITE_LOG" = true ]; then
+        echo "$msg" >> "$LOG_FILE" 2>/dev/null || true
+    fi
+}
+
+emit_log() {
+    if [ "$CAN_WRITE_LOG" = true ]; then
+        tee -a "$LOG_FILE"
+    else
+        cat
+    fi
 }
 
 # Parse runner flags
@@ -183,15 +197,10 @@ detect_backend() {
 
 BACKEND=$(detect_backend)
 
-# Update /etc/dnf/automatic.conf on RPM systems
-if [ "$BACKEND" != "apt" ]; then
-    if [ "$DRY_RUN" = true ]; then
-        set_ini_val "$DNF_AUTO_CONF" "apply_updates" "no" "commands"
-        set_ini_val "$DNF_AUTO_CONF" "download_updates" "yes" "commands"
-    else
-        set_ini_val "$DNF_AUTO_CONF" "apply_updates" "yes" "commands"
-        set_ini_val "$DNF_AUTO_CONF" "download_updates" "yes" "commands"
-    fi
+# Update /etc/dnf/automatic.conf on RPM systems (only on active update runs)
+if [ "$BACKEND" != "apt" ] && [ "$DRY_RUN" = false ]; then
+    set_ini_val "$DNF_AUTO_CONF" "apply_updates" "yes" "commands"
+    set_ini_val "$DNF_AUTO_CONF" "download_updates" "yes" "commands"
     set_ini_val "$DNF_AUTO_CONF" "upgrade_type" "$UPGRADE_TYPE" "commands"
     set_ini_val "$DNF_AUTO_CONF" "random_sleep" "0" "commands"
     set_ini_val "$DNF_AUTO_CONF" "emit_via" "$EMIT_VIA" "emitters"
@@ -210,57 +219,72 @@ if [ "$BACKEND" = "apt" ]; then
     log "INFO" "Using backend: APT / Unattended-Upgrades (refresh: ${REFRESH_METADATA})"
     if [ "$REFRESH_METADATA" = "true" ]; then
         log "INFO" "Refreshing APT package indices (apt-get update)..."
-        apt-get update -qq 2>&1 | tee -a "$LOG_FILE" || true
+        apt-get update -qq 2>&1 | emit_log || true
     fi
 
     if [ "$UPGRADE_TYPE" = "security" ]; then
         if command -v unattended-upgrade &>/dev/null; then
             if [ "$DRY_RUN" = true ]; then
                 log "INFO" "Simulating security updates via unattended-upgrade --dry-run..."
-                unattended-upgrade --dry-run 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+                unattended-upgrade --dry-run 2>&1 | emit_log || STATUS=$?
             else
                 log "INFO" "Applying security updates via unattended-upgrade..."
-                unattended-upgrade -d 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+                unattended-upgrade -d 2>&1 | emit_log || STATUS=$?
             fi
         else
             log "WARN" "unattended-upgrade command not found; using apt-get --only-upgrade..."
             if [ "$DRY_RUN" = true ]; then
-                apt-get -s --only-upgrade upgrade -y 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+                apt-get -s --only-upgrade upgrade -y 2>&1 | emit_log || STATUS=$?
             else
                 DEBIAN_FRONTEND=noninteractive apt-get --only-upgrade upgrade -y -q \
-                    -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+                    -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" 2>&1 | emit_log || STATUS=$?
             fi
         fi
     else
         # Full upgrade (all packages)
         if [ "$DRY_RUN" = true ]; then
             log "INFO" "Simulating full system upgrade via apt-get -s dist-upgrade..."
-            apt-get -s dist-upgrade 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+            apt-get -s dist-upgrade 2>&1 | emit_log || STATUS=$?
         else
             log "INFO" "Applying full system upgrade via apt-get dist-upgrade..."
             DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y -q \
-                -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+                -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" 2>&1 | emit_log || STATUS=$?
         fi
     fi
 elif [ "$BACKEND" = "dnf5" ]; then
     log "INFO" "Using backend: DNF5 automatic (refresh: ${REFRESH_METADATA})"
     if [ "$DRY_RUN" = true ]; then
-        # shellcheck disable=SC2086
-        dnf5 $REFRESH_OPT automatic --no-installupdates 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+        if [ "$UPGRADE_TYPE" = "security" ]; then
+            log "INFO" "Checking available security updates via dnf5 check-upgrade --security..."
+            # shellcheck disable=SC2086
+            dnf5 $REFRESH_OPT check-upgrade --security 2>&1 | emit_log || STATUS=$?
+        else
+            log "INFO" "Checking all available updates via dnf5 check-upgrade..."
+            # shellcheck disable=SC2086
+            dnf5 $REFRESH_OPT check-upgrade 2>&1 | emit_log || STATUS=$?
+        fi
     else
         # shellcheck disable=SC2086
-        dnf5 $REFRESH_OPT automatic --installupdates 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+        dnf5 $REFRESH_OPT automatic --installupdates 2>&1 | emit_log || STATUS=$?
     fi
 elif [ "$BACKEND" = "dnf4" ]; then
     log "INFO" "Using backend: DNF4 dnf-automatic (refresh: ${REFRESH_METADATA})"
     if [ "$REFRESH_METADATA" = "true" ]; then
         log "INFO" "Refreshing DNF4 repository metadata cache..."
-        dnf makecache --refresh 2>&1 | tee -a "$LOG_FILE" || true
+        dnf makecache --refresh 2>&1 | emit_log || true
     fi
     if [ "$DRY_RUN" = true ]; then
-        dnf-automatic "$DNF_AUTO_CONF" --downloadupdates 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+        if [ "$UPGRADE_TYPE" = "security" ]; then
+            log "INFO" "Checking available security updates via dnf check-upgrade --security..."
+            # shellcheck disable=SC2086
+            dnf $REFRESH_OPT check-upgrade --security 2>&1 | emit_log || STATUS=$?
+        else
+            log "INFO" "Checking all available updates via dnf check-upgrade..."
+            # shellcheck disable=SC2086
+            dnf $REFRESH_OPT check-upgrade 2>&1 | emit_log || STATUS=$?
+        fi
     else
-        dnf-automatic "$DNF_AUTO_CONF" --installupdates 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+        dnf-automatic "$DNF_AUTO_CONF" --installupdates 2>&1 | emit_log || STATUS=$?
     fi
 else
     # Fallback to direct dnf invocation
@@ -268,18 +292,18 @@ else
     if [ "$UPGRADE_TYPE" = "security" ]; then
         if [ "$DRY_RUN" = true ]; then
             # shellcheck disable=SC2086
-            dnf $REFRESH_OPT check-upgrade --security 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+            dnf $REFRESH_OPT check-upgrade --security 2>&1 | emit_log || STATUS=$?
         else
             # shellcheck disable=SC2086
-            dnf $REFRESH_OPT upgrade -y --security 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+            dnf $REFRESH_OPT upgrade -y --security 2>&1 | emit_log || STATUS=$?
         fi
     else
         if [ "$DRY_RUN" = true ]; then
             # shellcheck disable=SC2086
-            dnf $REFRESH_OPT check-upgrade 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+            dnf $REFRESH_OPT check-upgrade 2>&1 | emit_log || STATUS=$?
         else
             # shellcheck disable=SC2086
-            dnf $REFRESH_OPT upgrade -y 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+            dnf $REFRESH_OPT upgrade -y 2>&1 | emit_log || STATUS=$?
         fi
     fi
 fi
@@ -363,6 +387,10 @@ if [ "$DRY_RUN" = false ]; then
             if ! needs-restarting -r &>/dev/null; then
                 REBOOT_NEEDED=true
             fi
+        elif [ -f /run/reboot-required ] || [ -f /var/run/reboot-required ]; then
+            REBOOT_NEEDED=true
+        else
+            log "WARN" "Reboot policy is 'when-needed' but 'needs-restarting' was not found. Please install yum-utils."
         fi
     elif [ "$REBOOT" = "when-changed" ]; then
         # Check if packages were updated in this transaction
@@ -387,7 +415,7 @@ if [ "$DRY_RUN" = false ]; then
         fi
 
         log "WARN" "System reboot required according to policy ($REBOOT). Scheduling reboot in 5 minutes..."
-        shutdown -r +5 "System rebooting in 5 minutes to complete package updates. Run 'sudo shutdown -c' to cancel." 2>&1 | tee -a "$LOG_FILE" || true
+        shutdown -r +5 "System rebooting in 5 minutes to complete package updates. Run 'sudo shutdown -c' to cancel." 2>&1 | emit_log || true
     fi
 fi
 

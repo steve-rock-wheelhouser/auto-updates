@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 NAME="auto-updates"
-VERSION="1.1.1"
+VERSION="1.1.2"
 RELEASE="1"
 TARBALL="${NAME}-${VERSION}.tar.gz"
 
@@ -38,6 +38,7 @@ TOPDIR="${SCRIPT_DIR}/build/rpmbuild"
 rm -rf "$TOPDIR"
 mkdir -p "${TOPDIR}"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
 mkdir -p "${SCRIPT_DIR}/dist"
+mkdir -p "${SCRIPT_DIR}/build-linux/Output"/{rocky/10,almalinux/10,fedora/44}
 
 # Create source archive
 TEMP_SOURCE_DIR=$(mktemp -d)
@@ -62,9 +63,10 @@ cp LICENSE "$STAGE_DIR/"
 tar -czf "${TOPDIR}/SOURCES/${TARBALL}" -C "$TEMP_SOURCE_DIR" "${NAME}-${VERSION}"
 cp auto-updates.spec "${TOPDIR}/SPECS/"
 
-echo "Running rpmbuild (Fedora)..."
+echo "Running rpmbuild (Fedora 44)..."
 rpmbuild -ba \
     --define "_topdir ${TOPDIR}" \
+    --define "dist .fc44" \
     "${TOPDIR}/SPECS/auto-updates.spec"
 
 echo "Running rpmbuild (Enterprise Linux 10)..."
@@ -73,47 +75,56 @@ rpmbuild -ba \
     --define "dist .el10" \
     "${TOPDIR}/SPECS/auto-updates.spec"
 
-# Copy resulting RPMs to dist
-cp -v "${TOPDIR}/RPMS"/noarch/*.rpm "${SCRIPT_DIR}/dist/" 2>/dev/null || cp -v "${TOPDIR}/RPMS"/*/*.rpm "${SCRIPT_DIR}/dist/"
-cp -v "${TOPDIR}/SRPMS"/*.src.rpm "${SCRIPT_DIR}/dist/"
+# Copy resulting RPMs to standardized build-linux/Output and dist
+FC_RPM=$(find "${TOPDIR}/RPMS" -name "*fc44*.rpm" | head -n 1)
+EL_RPM=$(find "${TOPDIR}/RPMS" -name "*el10*.rpm" | head -n 1)
+
+if [ -n "$FC_RPM" ]; then
+    cp -v "$FC_RPM" "${SCRIPT_DIR}/build-linux/Output/fedora/44/"
+    cp -v "$FC_RPM" "${SCRIPT_DIR}/dist/"
+fi
+
+if [ -n "$EL_RPM" ]; then
+    cp -v "$EL_RPM" "${SCRIPT_DIR}/build-linux/Output/rocky/10/"
+    cp -v "$EL_RPM" "${SCRIPT_DIR}/build-linux/Output/almalinux/10/"
+    cp -v "$EL_RPM" "${SCRIPT_DIR}/dist/"
+fi
+
+cp -v "${TOPDIR}/SRPMS"/*.src.rpm "${SCRIPT_DIR}/dist/" 2>/dev/null || true
 
 echo ""
 echo "================================================================================"
 echo " Signing RPM packages with GPG..."
 echo "================================================================================"
-rpmsign --addsign "${SCRIPT_DIR}/dist"/*.rpm
+mapfile -t ALL_RPMS < <(find "${SCRIPT_DIR}/build-linux/Output" "${SCRIPT_DIR}/dist" -name "*.rpm" | sort -u)
+rpmsign --addsign "${ALL_RPMS[@]}"
 
 echo ""
 echo "================================================================================"
-echo " Verifying GPG Signatures..."
+echo " Verifying GPG Signatures (Strict Security Mode)..."
 echo "================================================================================"
-for rpm_pkg in "${SCRIPT_DIR}/dist"/*.rpm; do
-    echo -n "$(basename "$rpm_pkg"): "
-    rpm -K "$rpm_pkg"
+for rpm_pkg in "${ALL_RPMS[@]}"; do
+    [ -f "$rpm_pkg" ] || continue
+    echo "    Checking: $(basename "$rpm_pkg")"
+    if ! rpm -Kv "$rpm_pkg" | grep -qiE "Header.*Signature.*OK"; then
+        echo "FATAL: Security verification failed for $rpm_pkg!" >&2
+        rpm -Kv "$rpm_pkg" >&2
+        exit 1
+    fi
 done
+echo "    [PASS] All package cryptographic signatures verified successfully."
 
 echo ""
 echo "================================================================================"
 echo " RPM Build & Signing Complete!"
-echo " Output files in: ${SCRIPT_DIR}/dist/"
+echo " Output files in: ${SCRIPT_DIR}/build-linux/Output/ & ${SCRIPT_DIR}/dist/"
 echo "================================================================================"
 ls -lh "${SCRIPT_DIR}/dist"
-
-echo ""
-echo "Package inspection:"
-BUILT_RPM=$(find "${SCRIPT_DIR}/dist" -name "${NAME}-${VERSION}*.noarch.rpm" | head -n 1)
-if [ -n "$BUILT_RPM" ]; then
-    echo "Signature details:"
-    rpm -qi -p "$BUILT_RPM" | grep -A 2 -i "Signature"
-    echo ""
-    echo "Files in package:"
-    rpm -qpl "$BUILT_RPM"
-fi
 
 if command -v rpmlint &>/dev/null; then
     echo ""
     echo "================================================================================"
     echo " Running rpmlint package quality validation..."
     echo "================================================================================"
-    rpmlint "$BUILT_RPM" "${TOPDIR}/SPECS/auto-updates.spec" || true
+    rpmlint "$EL_RPM" "${TOPDIR}/SPECS/auto-updates.spec"
 fi

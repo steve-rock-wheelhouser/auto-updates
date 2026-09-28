@@ -1,9 +1,22 @@
 # Build and packaging artifacts
 build/
 dist/
+build-linux/Output/
+rpmbuild/
+rpmbuild-release/
 *.tar.gz
 *.rpm
 *.src.rpm
+*.deb
+*.iso
+
+# Keys and credentials
+*.key
+*.pem
+*.asc
+*.p12
+*-secret.*
+.env*
 
 # RPM temporary spec build dirs
 BUILD/

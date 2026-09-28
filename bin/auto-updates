@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-VERSION="1.1.1"
+VERSION="1.1.2"
 CONF_FILE="/etc/auto-updates/auto-updates.conf"
 DNF_AUTO_CONF="/etc/dnf/automatic.conf"
 RUNNER_BIN="/usr/libexec/auto-updates-runner"
@@ -51,7 +51,7 @@ load_config() {
     RANDOM_SLEEP="10"
     REBOOT="never"
     EMIT_VIA="stdio"
-    LOG_FILE="/var/log/auto-updates.log"
+    LOG_FILE="/var/log/auto-updates/auto-updates.log"
     REFRESH_METADATA="true"
     DEFER_REBOOT_IF_BUSY="true"
 
@@ -284,10 +284,18 @@ cmd_status() {
     printf "  ${BOLD}%-24s${RESET} : %s\n" "Log File" "$LOG_FILE"
 
     # Last execution info
-    if [ -f "$LOG_FILE" ] && [ -s "$LOG_FILE" ]; then
+    local check_log="$LOG_FILE"
+    if [ ! -f "$check_log" ] && [ -f "/var/log/auto-updates.log" ]; then
+        check_log="/var/log/auto-updates.log"
+    fi
+    if [ -f "$check_log" ] && [ -s "$check_log" ]; then
         local last_log
-        last_log=$(tail -n 1 "$LOG_FILE" 2>/dev/null || true)
-        printf "  ${BOLD}%-24s${RESET} : %s\n" "Last Log Entry" "$last_log"
+        last_log=$(tail -n 1 "$check_log" 2>/dev/null || true)
+        if [ -n "$last_log" ]; then
+            printf "  ${BOLD}%-24s${RESET} : %s\n" "Last Log Entry" "$last_log"
+        elif [ ! -r "$check_log" ]; then
+            printf "  ${BOLD}%-24s${RESET} : %s\n" "Last Log Entry" "(Run with sudo to inspect privileged log file)"
+        fi
     fi
 
     echo -e "${BOLD}${CYAN}================================================================${RESET}"
@@ -302,7 +310,7 @@ cmd_set_mode() {
 
     case "$target_mode" in
         security|sec)
-            require_root "mode" "security"
+            require_root "set-mode" "security"
             set_conf_key "MODE" "security"
             set_ini_key "$DNF_AUTO_CONF" "commands" "upgrade_type" "security"
             echo -e "${GREEN}${BOLD}[SUCCESS] Mode updated to: security${RESET}"
@@ -310,14 +318,14 @@ cmd_set_mode() {
             echo -e "  - Non-security updates are ${BOLD}disabled${RESET}."
             ;;
         all|daily-all)
-            require_root "mode" "all"
+            require_root "set-mode" "all"
             set_conf_key "MODE" "all"
             set_ini_key "$DNF_AUTO_CONF" "commands" "upgrade_type" "default"
             echo -e "${GREEN}${BOLD}[SUCCESS] Mode updated to: all (daily full updates)${RESET}"
             echo -e "  - All package updates will run every single day at ${BOLD}${SCHEDULE_TIME:-03:30}${RESET} local time."
             ;;
         weekly-all|all-weekly)
-            require_root "mode" "weekly-all"
+            require_root "set-mode" "weekly-all"
             set_conf_key "MODE" "weekly-all"
             echo -e "${GREEN}${BOLD}[SUCCESS] Mode updated to: weekly-all (hybrid schedule)${RESET}"
             echo -e "  - Daily security updates will run Mon-Sat at ${BOLD}${SCHEDULE_TIME:-03:30}${RESET} local time."
@@ -344,6 +352,19 @@ cmd_disable() {
     echo -e "${YELLOW}${BOLD}[SUCCESS] Auto-Updates timer stopped and disabled.${RESET}"
 }
 
+resolve_runner() {
+    local repo_runner="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/libexec/auto-updates-runner"
+    if [ -x "$repo_runner" ] && [ "${BASH_SOURCE[0]}" != "/usr/bin/auto-updates" ]; then
+        echo "$repo_runner"
+    elif [ -x "$RUNNER_BIN" ]; then
+        echo "$RUNNER_BIN"
+    elif [ -x "$repo_runner" ]; then
+        echo "$repo_runner"
+    else
+        echo ""
+    fi
+}
+
 cmd_run() {
     require_root "run" "$@"
     local runner_args=()
@@ -368,24 +389,22 @@ cmd_run() {
     done
 
     echo -e "${BLUE}${BOLD}[INFO] Executing manual Auto-Updates run...${RESET}"
-    if [ -x "$RUNNER_BIN" ]; then
-        "$RUNNER_BIN" "${runner_args[@]}"
-    elif [ -x "./libexec/auto-updates-runner" ]; then
-        ./libexec/auto-updates-runner "${runner_args[@]}"
+    local runner
+    runner=$(resolve_runner)
+    if [ -n "$runner" ]; then
+        "$runner" "${runner_args[@]}"
     else
-        echo -e "${RED}[ERROR] Runner executable not found at $RUNNER_BIN${RESET}" >&2
+        echo -e "${RED}[ERROR] Runner executable not found.${RESET}" >&2
         exit 1
     fi
 }
 
 cmd_check() {
     echo -e "${BLUE}${BOLD}[INFO] Checking for available updates (dry run)...${RESET}"
-    if [ -x "$RUNNER_BIN" ]; then
-        require_root "check"
-        "$RUNNER_BIN" --dry-run
-    elif [ -x "./libexec/auto-updates-runner" ]; then
-        require_root "check"
-        ./libexec/auto-updates-runner --dry-run
+    local runner
+    runner=$(resolve_runner)
+    if [ -n "$runner" ]; then
+        "$runner" --dry-run
     else
         if command -v apt-get &>/dev/null && ! command -v dnf &>/dev/null && ! command -v dnf5 &>/dev/null; then
             apt-get -s dist-upgrade || true
@@ -498,9 +517,17 @@ cmd_set_reboot() {
 cmd_logs() {
     load_config
     local count="${1:-40}"
-    if [ -f "$LOG_FILE" ] && [ -s "$LOG_FILE" ]; then
-        echo -e "${BOLD}${CYAN}--- Auto-Updates Log: $LOG_FILE (Last $count lines) ---${RESET}"
-        tail -n "$count" "$LOG_FILE"
+    local check_log="$LOG_FILE"
+    if [ ! -f "$check_log" ] && [ -f "/var/log/auto-updates.log" ]; then
+        check_log="/var/log/auto-updates.log"
+    fi
+    if [ -f "$check_log" ] && [ -s "$check_log" ]; then
+        if [ -r "$check_log" ]; then
+            echo -e "${BOLD}${CYAN}--- Auto-Updates Log: $check_log (Last $count lines) ---${RESET}"
+            tail -n "$count" "$check_log"
+        else
+            require_root "logs" "$count"
+        fi
     else
         echo -e "${BOLD}${CYAN}--- Systemd Journal: $SERVICE_UNIT ---${RESET}"
         journalctl -u "$SERVICE_UNIT" -n "$count" --no-pager || true
@@ -516,7 +543,7 @@ ${BOLD}USAGE:${RESET}
 
 ${BOLD}COMMANDS:${RESET}
   ${GREEN}status${RESET}                       Show current configuration, timer status, and next scheduled run
-  ${GREEN}mode <security|all|weekly-all>${RESET} Set the update mode:
+  ${GREEN}set-mode <security|all|weekly-all>${RESET} Set the update mode (alias: mode):
                                  ${BOLD}security${RESET}   : Daily security updates only (default)
                                  ${BOLD}all${RESET}        : Full updates (all packages) every day
                                  ${BOLD}weekly-all${RESET} : Daily security + weekly full updates (${WEEKLY_DAY:-Sun})
@@ -569,7 +596,7 @@ case "$ACTION" in
     status|-s|--status)
         cmd_status
         ;;
-    mode)
+    set-mode|mode)
         cmd_set_mode "$@"
         ;;
     --security)

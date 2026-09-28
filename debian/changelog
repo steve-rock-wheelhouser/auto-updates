@@ -1,3 +1,12 @@
+auto-updates (1.1.2-1) unstable; urgency=medium
+
+  * Fixed 'set-mode' CLI command dispatch in bin/auto-updates.
+  * Prevented system configuration mutation during dry-run queries.
+  * Standardized log paths and updated logrotate configuration.
+  * Standardized build output to build-linux/Output/ and added publish.sh.
+
+ -- Steve Rock Wheelhouser <steve@wheelhouser.com>  Mon, 28 Sep 2026 13:30:00 -0400
+
 auto-updates (1.1.1-1) unstable; urgency=medium
 
   * Added official scalable vector icon (auto-updates.svg) and hicolor desktop icon integration.

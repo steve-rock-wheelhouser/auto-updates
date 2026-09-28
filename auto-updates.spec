@@ -1,5 +1,5 @@
 Name:           auto-updates
-Version:        1.1.1
+Version:        1.1.2
 Release:        1%{?dist}
 Summary:        CLI and automated system updater for Fedora, Rocky Linux, and AlmaLinux
 
@@ -15,6 +15,7 @@ Requires:       coreutils
 Requires:       sed
 Requires:       gawk
 Requires:       logrotate
+Recommends:     yum-utils
 
 %description
 auto-updates is a CLI utility and systemd service that configures and manages
@@ -103,6 +104,7 @@ fi
 # Ensure log directory and file exist
 mkdir -p %{_localstatedir}/log/auto-updates
 touch %{_localstatedir}/log/auto-updates/auto-updates.log
+ln -sfn auto-updates/auto-updates.log %{_localstatedir}/log/auto-updates.log 2>/dev/null || true
 
 # Disable any default distribution dnf-automatic timers to prevent duplicate runs
 systemctl disable --now dnf-automatic.timer 2>/dev/null || true
@@ -156,6 +158,13 @@ systemctl daemon-reload 2>/dev/null || true
 %ghost %attr(0640, root, root) %{_localstatedir}/log/auto-updates.log
 
 %changelog
+* Mon Sep 28 2026 Steve Rock Wheelhouser <steve@wheelhouser.com> - 1.1.2-1
+- Fixed 'set-mode' CLI command dispatch in bin/auto-updates.
+- Prevented system configuration mutation on dry-run queries.
+- Added Recommends: yum-utils for reliable reboot requirement detection on RHEL/Rocky.
+- Standardized log paths and updated logrotate policy for both log locations.
+- Standardized build output to build-linux/Output/ and integrated publish.sh.
+
 * Mon Sep 28 2026 Steve Rock Wheelhouser <steve@wheelhouser.com> - 1.1.1-1
 - Added official scalable vector icon (auto-updates.svg) and hicolor desktop icon integration.
 

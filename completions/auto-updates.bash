@@ -6,11 +6,11 @@ _auto_updates() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    commands="status mode enable disable run check set-time set-day set-reboot logs help version"
+    commands="status set-mode mode enable disable run check set-time set-day set-reboot logs help version"
     options="-s --status --security --all --weekly-all --all-weekly --reboot -e --enable -d --disable -r --run -c --check -l --logs -h --help -v --version"
 
     case "$prev" in
-        mode)
+        set-mode|mode)
             COMPREPLY=( $(compgen -W "security all weekly-all all-weekly daily-all" -- "$cur") )
             return 0
             ;;

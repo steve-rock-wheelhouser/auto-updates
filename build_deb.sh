@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 NAME="auto-updates"
-VERSION="1.1.1"
+VERSION="1.1.2"
 RELEASE="1"
 ARCH="all"
 DEB_NAME="${NAME}_${VERSION}-${RELEASE}_${ARCH}.deb"
@@ -30,6 +30,7 @@ BUILD_ROOT="${SCRIPT_DIR}/build/deb"
 rm -rf "$BUILD_ROOT"
 mkdir -p "$BUILD_ROOT"
 mkdir -p "${SCRIPT_DIR}/dist"
+mkdir -p "${SCRIPT_DIR}/build-linux/Output"/{debian/13,ubuntu/26.04}
 
 STAGE_DIR="${BUILD_ROOT}/pkg"
 mkdir -p "${STAGE_DIR}"/{DEBIAN,usr/bin,usr/libexec,lib/systemd/system,etc/auto-updates,etc/logrotate.d,usr/share/bash-completion/completions,usr/share/man/man8,usr/share/man/man5,usr/share/doc/auto-updates,usr/share/icons/hicolor/scalable/apps}
@@ -122,10 +123,14 @@ else
     )
 fi
 
+cp -v "$DEST_DEB" "${SCRIPT_DIR}/build-linux/Output/debian/13/"
+cp -v "$DEST_DEB" "${SCRIPT_DIR}/build-linux/Output/ubuntu/26.04/"
+
 echo ""
 echo "================================================================================"
 echo " Debian Package Built Successfully!"
 echo " Package: ${DEST_DEB}"
+echo " Output directories: ${SCRIPT_DIR}/build-linux/Output/debian/13 & ubuntu/26.04"
 echo "================================================================================"
 ls -lh "$DEST_DEB"
 

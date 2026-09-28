@@ -1,4 +1,4 @@
-/var/log/auto-updates/auto-updates.log {
+/var/log/auto-updates/*.log /var/log/auto-updates.log {
     weekly
     rotate 4
     missingok
