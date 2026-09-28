@@ -43,11 +43,12 @@
 # 1.1.5 - Added comprehensive value proposition and global marketing strategy documentation
 # 1.1.6 - Added desktop launcher (Terminal=true), AppStream metainfo, and marketing banner SVG
 # 1.1.7 - Fixed package discovery in publish.sh to dynamically target active release version
+# 1.1.8 - Integrated AppStream showcase screenshots, hero banner, and branding metadata
 # ==============================================================================
 
 set -euo pipefail
 
-VERSION="1.1.7"
+VERSION="1.1.8"
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SRC_DIR}/.." && pwd)"

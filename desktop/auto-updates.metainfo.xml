@@ -22,6 +22,28 @@
   <developer id="com.wheelhouser">
     <name>Steve Rock Wheelhouser</name>
   </developer>
+  <branding>
+    <color type="primary" scheme_preference="light">#007AFF</color>
+    <color type="primary" scheme_preference="dark">#0f172a</color>
+  </branding>
+  <screenshots>
+    <screenshot type="default">
+      <caption xml:lang="en">Auto-Updates showcase hero banner</caption>
+      <image>https://raw.githubusercontent.com/steve-rock-wheelhouser/auto-updates/main/assets/marketing-materials/screenshots/auto-updates-banner.png</image>
+    </screenshot>
+    <screenshot>
+      <caption xml:lang="en">Real-time system status and scheduled update timer inspection</caption>
+      <image>https://raw.githubusercontent.com/steve-rock-wheelhouser/auto-updates/main/assets/marketing-materials/screenshots/screenshot-1.png</image>
+    </screenshot>
+    <screenshot>
+      <caption xml:lang="en">Interactive command-line interface and configuration options</caption>
+      <image>https://raw.githubusercontent.com/steve-rock-wheelhouser/auto-updates/main/assets/marketing-materials/screenshots/screenshot-2.png</image>
+    </screenshot>
+    <screenshot>
+      <caption xml:lang="en">Comprehensive Unix system administration manual page</caption>
+      <image>https://raw.githubusercontent.com/steve-rock-wheelhouser/auto-updates/main/assets/marketing-materials/screenshots/screenshot-3.png</image>
+    </screenshot>
+  </screenshots>
   <content_rating type="oars-1.1" />
   <categories>
     <category>System</category>
@@ -30,4 +52,31 @@
   <provides>
     <binary>auto-updates</binary>
   </provides>
+  <releases>
+    <release version="1.1.8" date="2026-09-28">
+      <description>
+        <p>Integrate AppStream showcase screenshots, hero banner, and branding metadata for GNOME Software.</p>
+      </description>
+    </release>
+    <release version="1.1.7" date="2026-09-28">
+      <description>
+        <p>Dynamic package discovery in publish script and build stabilization.</p>
+      </description>
+    </release>
+    <release version="1.1.6" date="2026-09-28">
+      <description>
+        <p>Add desktop launcher and AppStream metainfo for GNOME integration.</p>
+      </description>
+    </release>
+    <release version="1.1.0" date="2026-09-28">
+      <description>
+        <p>Add multi-distribution support for Debian and Ubuntu with APT backend.</p>
+      </description>
+    </release>
+    <release version="1.0.0" date="2026-09-27">
+      <description>
+        <p>Initial production release for Fedora, Rocky Linux, and AlmaLinux.</p>
+      </description>
+    </release>
+  </releases>
 </component>
