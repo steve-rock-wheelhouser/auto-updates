@@ -32,13 +32,15 @@ echo "Target release version: v${TARGET_VER}"
 # Locate RPM packages matching target version
 EL10_RPM=$(find "$SCRIPT_DIR/build-linux/Output/rocky/10" "$SCRIPT_DIR/dist" -name "*auto-updates-${TARGET_VER}*el10*.noarch.rpm" 2>/dev/null | sort -V | tail -n 1 || true)
 FC44_RPM=$(find "$SCRIPT_DIR/build-linux/Output/fedora/44" "$SCRIPT_DIR/dist" -name "*auto-updates-${TARGET_VER}*fc44*.noarch.rpm" 2>/dev/null | sort -V | tail -n 1 || true)
+FC45_RPM=$(find "$SCRIPT_DIR/build-linux/Output/fedora/45" "$SCRIPT_DIR/dist" -name "*auto-updates-${TARGET_VER}*fc45*.noarch.rpm" 2>/dev/null | sort -V | tail -n 1 || true)
 
 # If RPMs are missing, build them
-if [ -z "$EL10_RPM" ] || [ -z "$FC44_RPM" ]; then
+if [ -z "$EL10_RPM" ] || [ -z "$FC44_RPM" ] || [ -z "$FC45_RPM" ]; then
     echo "⚠️ RPM packages for v${TARGET_VER} not found. Running build_rpm.sh..."
     ./build_rpm.sh
     EL10_RPM=$(find "$SCRIPT_DIR/build-linux/Output/rocky/10" "$SCRIPT_DIR/dist" -name "*auto-updates-${TARGET_VER}*el10*.noarch.rpm" 2>/dev/null | sort -V | tail -n 1 || true)
     FC44_RPM=$(find "$SCRIPT_DIR/build-linux/Output/fedora/44" "$SCRIPT_DIR/dist" -name "*auto-updates-${TARGET_VER}*fc44*.noarch.rpm" 2>/dev/null | sort -V | tail -n 1 || true)
+    FC45_RPM=$(find "$SCRIPT_DIR/build-linux/Output/fedora/45" "$SCRIPT_DIR/dist" -name "*auto-updates-${TARGET_VER}*fc45*.noarch.rpm" 2>/dev/null | sort -V | tail -n 1 || true)
 fi
 
 # Locate DEB package matching target version
@@ -61,13 +63,22 @@ if [ -n "$EL10_RPM" ]; then
     done
 fi
 
-# 2. Deploy Fedora 44 RPM
+# 2. Deploy Fedora 44 and Fedora 45 RPMs
 if [ -n "$FC44_RPM" ]; then
     echo "==> Deploying Fedora 44 RPM: $(basename "$FC44_RPM")..."
     for arch in x86_64 aarch64; do
         dest="$REPO_DIR/fedora/44/$arch"
         mkdir -p "$dest"
         cp -v "$FC44_RPM" "$dest/"
+    done
+fi
+
+if [ -n "$FC45_RPM" ]; then
+    echo "==> Deploying Fedora 45 RPM: $(basename "$FC45_RPM")..."
+    for arch in x86_64 aarch64; do
+        dest="$REPO_DIR/fedora/45/$arch"
+        mkdir -p "$dest"
+        cp -v "$FC45_RPM" "$dest/"
     done
 fi
 
