@@ -53,6 +53,11 @@
     <binary>auto-updates</binary>
   </provides>
   <releases>
+    <release version="1.2.0" date="2026-09-28">
+      <description>
+        <p>Display application version in status header and provide helpful CLI reference prompts and examples for interactive and launcher terminal sessions.</p>
+      </description>
+    </release>
     <release version="1.1.8" date="2026-09-28">
       <description>
         <p>Integrate AppStream showcase screenshots, hero banner, and branding metadata for GNOME Software.</p>

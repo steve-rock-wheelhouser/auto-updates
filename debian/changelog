@@ -1,3 +1,10 @@
+auto-updates (1.2.0-1) unstable; urgency=medium
+
+  * Added application version to status dashboard header.
+  * Added quick CLI command prompts and examples (auto-updates -h, auto-updates run, man auto-updates) to status output.
+
+ -- Steve Rock <steve.rock@wheelhouser.com>  Mon, 28 Sep 2026 18:15:00 -0400
+
 auto-updates (1.1.8-1) unstable; urgency=medium
 
   * Integrated AppStream showcase screenshots, hero banner, and branding metadata for GNOME Software.
