@@ -1,5 +1,5 @@
 Name:           auto-updates
-Version:        1.0.3
+Version:        1.0.4
 Release:        1%{?dist}
 Summary:        CLI and automated system updater for Fedora, Rocky Linux, and AlmaLinux
 
@@ -128,6 +128,12 @@ systemctl daemon-reload 2>/dev/null || true
 %ghost %{_localstatedir}/log/auto-updates.log
 
 %changelog
+* Mon Sep 28 2026 Steve Rock Wheelhouser <steve@wheelhouser.com> - 1.0.4-1
+- Added 'set-reboot' CLI command to configure automated reboot policy.
+- Integrated live system reboot status detection (needs-restarting) into 'auto-updates status'.
+- Added build and inhibitor protection (DEFER_REBOOT_IF_BUSY) to postpone reboots when active builds or inhibitors are detected.
+- Added friendly configuration advisories and bash completions for reboot policies.
+
 * Mon Sep 28 2026 Steve Rock Wheelhouser <steve@wheelhouser.com> - 1.0.3-1
 - Force remote repository metadata refresh (--refresh / makecache) before checking and applying updates.
 - Added REFRESH_METADATA configuration option and CLI status visibility.

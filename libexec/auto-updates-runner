@@ -29,6 +29,7 @@ REBOOT="never"
 EMIT_VIA="stdio"
 LOG_FILE="/var/log/auto-updates.log"
 REFRESH_METADATA="true"
+DEFER_REBOOT_IF_BUSY="true"
 
 # Load system configuration if present
 if [ -f "$CONF_FILE" ]; then
@@ -80,6 +81,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         --no-refresh)
             REFRESH_METADATA=false
+            shift
+            ;;
+        --defer-reboot)
+            DEFER_REBOOT_IF_BUSY=true
+            shift
+            ;;
+        --no-defer-reboot)
+            DEFER_REBOOT_IF_BUSY=false
             shift
             ;;
         *)
@@ -221,6 +230,58 @@ else
     exit "$STATUS"
 fi
 
+# Check for active build/compilation processes
+check_active_builds() {
+    local build_procs=(
+        rpmbuild
+        mock
+        make
+        ninja
+        cmake
+        meson
+        gcc
+        g++
+        clang
+        clang++
+        rustc
+        cargo
+        mvn
+        gradle
+        pytest
+        ctest
+    )
+    local found=()
+    for proc in "${build_procs[@]}"; do
+        if pgrep -x "$proc" &>/dev/null; then
+            found+=("$proc")
+        fi
+    done
+
+    # Check for container builds (podman build / docker build)
+    if pgrep -f "(podman|docker)[ -].*build" &>/dev/null; then
+        found+=("container-build")
+    fi
+
+    if [ ${#found[@]} -gt 0 ]; then
+        echo "${found[*]}"
+        return 0
+    fi
+    return 1
+}
+
+# Check for systemd shutdown inhibitor locks
+check_shutdown_inhibitors() {
+    if command -v systemd-inhibit &>/dev/null; then
+        local blocker
+        blocker=$(systemd-inhibit --list --no-pager 2>/dev/null | awk '$6 ~ /shutdown/ && $8 == "block" {print $1}' | head -n 1)
+        if [ -n "$blocker" ]; then
+            echo "$blocker"
+            return 0
+        fi
+    fi
+    return 1
+}
+
 # Check reboot policy if updates were applied
 if [ "$DRY_RUN" = false ]; then
     REBOOT_NEEDED=false
@@ -240,8 +301,24 @@ if [ "$DRY_RUN" = false ]; then
     fi
 
     if [ "$REBOOT_NEEDED" = true ]; then
+        if [ "$DEFER_REBOOT_IF_BUSY" = "true" ]; then
+            active_builds=""
+            if active_builds=$(check_active_builds); then
+                log "WARN" "Automated reboot postponed: Active build process(es) detected ($active_builds)."
+                log "WARN" "Reboot deferred to next scheduled maintenance window."
+                exit 0
+            fi
+
+            inhibitor_app=""
+            if inhibitor_app=$(check_shutdown_inhibitors); then
+                log "WARN" "Automated reboot postponed: System shutdown inhibitor lock held by '$inhibitor_app'."
+                log "WARN" "Reboot deferred to next scheduled maintenance window."
+                exit 0
+            fi
+        fi
+
         log "WARN" "System reboot required according to policy ($REBOOT). Scheduling reboot in 5 minutes..."
-        shutdown -r +5 "System rebooting in 5 minutes to complete package updates." 2>&1 | tee -a "$LOG_FILE" || true
+        shutdown -r +5 "System rebooting in 5 minutes to complete package updates. Run 'sudo shutdown -c' to cancel." 2>&1 | tee -a "$LOG_FILE" || true
     fi
 fi
 

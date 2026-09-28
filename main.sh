@@ -24,6 +24,8 @@
 #         Prepared repository and .gitignore for public open-source release
 # 1.0.3 - Force remote repository metadata refresh (--refresh / makecache)
 #         before checking and applying updates to ensure timely execution
+# 1.0.4 - Added 'set-reboot' CLI command with live reboot status detection,
+#         advisory notices, and build/session safety deferral guard
 # ==============================================================================
 
 set -euo pipefail
@@ -34,18 +36,19 @@ cd "$SCRIPT_DIR"
 show_menu() {
     clear
     echo "================================================================================"
-    echo "                Auto-Updates Management & Build Utility (v1.0.3)                "
+    echo "                Auto-Updates Management & Build Utility (v1.0.4)                "
     echo "================================================================================"
-    echo " 1) Build & Sign RPM Package       (Creates dist/auto-updates-1.0.3-1.noarch.rpm)"
+    echo " 1) Build & Sign RPM Package       (Creates dist/auto-updates-1.0.4-1.noarch.rpm)"
     echo " 2) Install/Upgrade RPM Package    (sudo dnf upgrade dist/auto-updates-*.rpm)"
     echo " 3) Run Local Standalone Install   (Directly installs CLI & systemd units)"
     echo " 4) Check Auto-Updates Status      (auto-updates status)"
     echo " 5) Set Mode: Security Only        (sudo auto-updates mode security)"
     echo " 6) Set Mode: All Updates          (sudo auto-updates mode all)"
-    echo " 7) Test Update Run (Dry Run)      (auto-updates check)"
-    echo " 8) Exit"
+    echo " 7) Configure Reboot Policy        (never / when-needed / when-changed)"
+    echo " 8) Test Update Run (Dry Run)      (auto-updates check)"
+    echo " 9) Exit"
     echo "================================================================================"
-    read -rp "Please select an option [1-8]: " choice
+    read -rp "Please select an option [1-9]: " choice
 
     case "$choice" in
         1)
@@ -85,13 +88,31 @@ show_menu() {
             fi
             ;;
         7)
+            echo "Select reboot policy:"
+            echo "  1) never        - Never reboot automatically (recommended for workstations)"
+            echo "  2) when-needed  - Reboot only if kernel/core libraries require it"
+            echo "  3) when-changed - Reboot whenever any package is updated"
+            read -rp "Choice [1-3]: " rchoice
+            case "$rchoice" in
+                1) rpol="never" ;;
+                2) rpol="when-needed" ;;
+                3) rpol="when-changed" ;;
+                *) echo "Invalid choice"; return ;;
+            esac
+            if command -v auto-updates &>/dev/null; then
+                sudo auto-updates set-reboot "$rpol"
+            else
+                sudo ./bin/auto-updates set-reboot "$rpol"
+            fi
+            ;;
+        8)
             if command -v auto-updates &>/dev/null; then
                 auto-updates check
             else
                 ./bin/auto-updates check
             fi
             ;;
-        8|q|Q)
+        9|q|Q)
             echo "Exiting."
             exit 0
             ;;
