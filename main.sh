@@ -28,6 +28,8 @@
 #         advisory notices, and build/session safety deferral guard
 # 1.0.5 - Aligned mode definitions with standard DNF: 'all' = daily full updates,
 #         'weekly-all' = hybrid weekly updates (with aliases)
+# 1.0.6 - Added Unix man pages auto-updates(8) and auto-updates.conf(5),
+#         and integrated man directory into RPM build and packaging
 # ==============================================================================
 
 set -euo pipefail
@@ -38,9 +40,9 @@ cd "$SCRIPT_DIR"
 show_menu() {
     clear
     echo "================================================================================"
-    echo "                Auto-Updates Management & Build Utility (v1.0.5)                "
+    echo "                Auto-Updates Management & Build Utility (v1.0.6)                "
     echo "================================================================================"
-    echo " 1) Build & Sign RPM Package       (Creates dist/auto-updates-1.0.5-1.noarch.rpm)"
+    echo " 1) Build & Sign RPM Package       (Creates dist/auto-updates-1.0.6-1.noarch.rpm)"
     echo " 2) Install/Upgrade RPM Package    (sudo dnf upgrade dist/auto-updates-*.rpm)"
     echo " 3) Run Local Standalone Install   (Directly installs CLI & systemd units)"
     echo " 4) Check Auto-Updates Status      (auto-updates status)"

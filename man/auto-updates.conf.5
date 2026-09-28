@@ -1,0 +1,112 @@
+.\" Manpage for auto-updates.conf.
+.\" Process with: groff -man -Tascii auto-updates.conf.5
+.TH AUTO-UPDATES.CONF 5 "28 September 2026" "auto-updates 1.0.6" "File Formats Manual"
+.SH NAME
+auto-updates.conf \- Configuration file for the auto-updates automated package service
+.SH SYNOPSIS
+/etc/auto-updates/auto-updates.conf
+.SH DESCRIPTION
+.B auto-updates.conf
+is the main configuration file for the \fBauto-updates\fR automated package manager service.
+It defines update modes, execution schedules, reboot policies, notification emitters, and
+logging options.
+.PP
+The file uses a standard shell-compatible key-value syntax:
+.RS
+.B KEY=\fIvalue\fR
+.RE
+Lines beginning with \fB#\fR are treated as comments and ignored.
+.SH CONFIGURATION DIRECTIVES
+.TP
+.BR MODE = \fI{security|all|weekly-all|daily-all}\fR
+Specifies the automated update policy.
+.RS
+.TP
+.B security
+Downloads and applies only security-related updates every day. Default setting.
+.TP
+.B all
+Applies full system upgrades across all packages every day at the scheduled time.
+.TP
+.B weekly-all \fR(or \fBall-weekly\fR)
+Runs daily security updates Monday through Saturday, and a full system upgrade of all
+packages once per week on \fBWEEKLY_DAY\fR.
+.TP
+.B daily-all
+Backward-compatible alias for \fBall\fR.
+.RE
+.TP
+.BR SCHEDULE_TIME = \fIHH:MM\fR
+Defines the local time of day in 24-hour format when updates are initiated. Default is \fB03:30\fR.
+.TP
+.BR WEEKLY_DAY = \fI{Sun|Mon|Tue|Wed|Thu|Fri|Sat}\fR
+Specifies the day of the week on which full system upgrades are executed when \fBMODE\fR
+is set to \fBweekly-all\fR. Default is \fBSun\fR.
+.TP
+.BR REBOOT = \fI{never|when-needed|when-changed}\fR
+Configures automated system reboot behavior following package installations.
+.RS
+.TP
+.B never
+Do not reboot automatically. Default setting.
+.TP
+.B when-needed
+Reboot only when installed packages require a restart (such as kernel or glibc updates).
+.TP
+.B when-changed
+Reboot whenever any package has been installed or upgraded.
+.RE
+.TP
+.BR DEFER_REBOOT_IF_BUSY = \fI{true|false}\fR
+When set to \fBtrue\fR (default), checks whether compilation tasks (e.g., \fBrpmbuild\fR,
+\fBmake\fR, \fBcargo\fR, \fBninja\fR, \fBgcc\fR, container builds) or \fBsystemd-inhibit\fR locks
+are running. If detected, reboot is safely postponed until the next cycle.
+.TP
+.BR REFRESH_METADATA = \fI{true|false}\fR
+When set to \fBtrue\fR (default), forces DNF to query upstream repository mirrors for fresh
+metadata before every update run, bypassing cached metadata expiration windows.
+.TP
+.BR RANDOM_SLEEP = \fISECONDS\fR
+Maximum randomized delay in seconds introduced before executing DNF commands. Prevents
+simultaneous mirror load spikes across large fleets. Default is \fB10\fR.
+.TP
+.BR EMIT_VIA = \fI{stdio|motd|email}\fR
+Controls how update notices and completion reports are delivered. Default is \fBstdio\fR.
+.TP
+.BR EMAIL_TO = \fIrecipient@domain.com\fR
+Destination email address when \fBEMIT_VIA=email\fR.
+.TP
+.BR EMAIL_FROM = \fIsender@domain.com\fR
+Originating email address when \fBEMIT_VIA=email\fR.
+.TP
+.BR EMAIL_HOST = \fIsmtp.domain.com\fR
+SMTP relay hostname when \fBEMIT_VIA=email\fR.
+.TP
+.BR LOG_FILE = \fIPATH\fR
+Specifies the destination path for execution logs. Default is \fB/var/log/auto-updates.log\fR.
+.SH EXAMPLES
+A workstation configuration performing daily security updates with weekly full Sunday updates
+and automated reboots when needed:
+.PP
+.RS
+.nf
+MODE=weekly-all
+SCHEDULE_TIME=03:30
+WEEKLY_DAY=Sun
+REBOOT=when-needed
+DEFER_REBOOT_IF_BUSY=true
+REFRESH_METADATA=true
+RANDOM_SLEEP=10
+EMIT_VIA=stdio
+LOG_FILE=/var/log/auto-updates.log
+.fi
+.RE
+.SH FILES
+.I /etc/auto-updates/auto-updates.conf
+.SH SEE ALSO
+.BR auto-updates (8),
+.BR dnf-automatic.conf (5)
+.SH AUTHOR
+Steve Rock Wheelhouser <steve@wheelhouser.com>
+.SH LICENSE
+GNU General Public License v3.0 or later (GPL-3.0-or-later).

@@ -1,0 +1,149 @@
+.\" Manpage for auto-updates.
+.\" Process with: groff -man -Tascii auto-updates.8
+.TH AUTO-UPDATES 8 "28 September 2026" "auto-updates 1.0.6" "System Administration Commands"
+.SH NAME
+auto-updates \- Automated DNF updates manager and systemd integration
+.SH SYNOPSIS
+.B auto-updates
+[\fICOMMAND\fR | \fIOPTION\fR]
+.br
+.B auto-updates
+\fBmode\fR \fIMODE\fR
+.br
+.B auto-updates
+\fBset-reboot\fR \fIPOLICY\fR
+.br
+.B auto-updates
+\fBrun\fR [\fB\-\-security\fR | \fB\-\-all\fR]
+.SH DESCRIPTION
+.B auto-updates
+is a CLI utility and systemd service manager that provides turnkey automated package
+maintenance for Red Hat Enterprise Linux family distributions, including Fedora,
+Rocky Linux, AlmaLinux, CentOS Stream, and RHEL.
+.PP
+By default upon installation,
+.B auto-updates
+configures and enables daily security updates at 03:30 AM in the local system timezone.
+The update mode, execution schedule, reboot policy, and execution behavior can be
+inspected and altered using the command-line interface or by editing
+.BR /etc/auto-updates/auto-updates.conf .
+.PP
+It is fully compatible with both \fBDNF4\fR (RHEL/Rocky/Alma 8/9) and \fBDNF5\fR (Fedora 41+,
+RHEL 10, Rocky 10) package managers, automatically detecting the running environment
+and disabling any conflicting stock systemd timers.
+.SH UPDATE MODES
+.TP
+.B security
+Downloads and applies only packages marked as security advisories every day at the
+configured schedule time (default: 03:30 AM). Recommended for high-uptime servers.
+.TP
+.B all
+Performs a full system upgrade of all packages (bugfixes, features, enhancements, and
+security) every day at the scheduled time. Matches the default behavior of standard
+\fBdnf-automatic\fR in default mode.
+.TP
+.B weekly-all \fR(alias \fBall-weekly\fR)
+A hybrid schedule that runs fast daily security updates from Monday through Saturday,
+and executes a complete system upgrade of all packages once per week on the configured
+day (default: Sunday at 03:30 AM). Recommended for workstations and development hosts.
+.SH COMMANDS
+.TP
+.B status \fR(alias \fB\-s\fR, \fB\-\-status\fR)
+Displays an interactive status dashboard showing the systemd timer state, configured
+mode, execution schedule, backend implementation, remote metadata refresh status,
+configured reboot policy, active build protection status, and live system reboot requirements.
+.TP
+.BR set-mode " " \fIMODE\fR " | " \fBmode\fR " " \fIMODE\fR
+Sets the update mode to \fBsecurity\fR, \fBall\fR, or \fBweekly-all\fR. Requires root privileges.
+.TP
+.B enable \fR(alias \fB\-e\fR, \fB\-\-enable\fR)
+Enables and immediately starts the \fBauto-updates.timer\fR systemd unit. Requires root privileges.
+.TP
+.B disable \fR(alias \fB\-d\fR, \fB\-\-disable\fR)
+Stops and disables the \fBauto-updates.timer\fR systemd unit. Requires root privileges.
+.TP
+.BR run " [" \-\-security " | " \-\-all ] " (alias " \fB\-r\fR )
+Executes an immediate manual update transaction. If invoked without flags, it executes
+according to the current day's policy. Use \fB\-\-security\fR or \fB\-\-all\fR to override.
+Requires root privileges.
+.TP
+.B check \fR(alias \fB\-c\fR, \fB\-\-check\fR)
+Performs a dry-run check for available updates without downloading or applying them.
+.TP
+.BR set-time " " \fIHH:MM\fR
+Updates the daily execution schedule time in 24-hour local time format (e.g., \fB04:00\fR)
+and reapplies the systemd timer configuration. Requires root privileges.
+.TP
+.BR set-day " " \fIDAY\fR
+Sets the day of the week on which full system upgrades are performed when running in
+\fBweekly-all\fR mode (e.g., \fBSun\fR, \fBSat\fR). Requires root privileges.
+.TP
+.BR set-reboot " " \fIPOLICY\fR " (alias " \fB\-\-reboot\fR )
+Configures the system reboot policy after automated updates. Valid policies are:
+.RS
+.TP
+.B never
+Never automatically reboot the system (default). Recommended for developer machines,
+workstations, and production hosts requiring manual maintenance windows.
+.TP
+.B when-needed
+Automatically reboots the system only if updated packages require a restart to take effect
+(e.g., updates to the Linux kernel, systemd, glibc, or core system libraries).
+.TP
+.B when-changed
+Automatically reboots the system whenever any package update is installed.
+.RE
+.TP
+.BR logs " [" \fIN\fR ] " (alias " \fB\-l\fR )
+Displays the last \fIN\fR lines of \fB/var/log/auto-updates.log\fR (default: 40 lines).
+.TP
+.B help \fR(alias \fB\-h\fR, \fB\-\-help\fR)
+Displays a quick command-line usage summary and examples.
+.TP
+.B version \fR(alias \fB\-v\fR, \fB\-\-version\fR)
+Displays the installed program version.
+.SH BUILD PROCESS AND INHIBITOR PROTECTION
+When an automated reboot policy (\fBwhen-needed\fR or \fBwhen-changed\fR) is active and
+\fBDEFER_REBOOT_IF_BUSY=true\fR is configured,
+.B auto-updates
+inspects the host for in-flight compilation and system tasks before issuing a reboot command.
+.PP
+The safety scanner verifies:
+.IP \(bu 2
+Active packaging and compilation tools: \fBrpmbuild\fR, \fBmock\fR, \fBmake\fR, \fBninja\fR,
+\fBcargo\fR, \fBgcc\fR, \fBg++\fR, \fBclang\fR, \fBrustc\fR.
+.IP \(bu 2
+Active containerized builds: \fBpodman build\fR, \fBdocker build\fR, \fBbuildah\fR.
+.IP \(bu 2
+System inhibitors: locks registered with \fBsystemd-inhibit\fR for shutdown or sleep operations.
+.PP
+If any active build processes or inhibitors are detected, the reboot is safely deferred until
+the next scheduled update cycle, and an advisory notice is logged to \fB/var/log/auto-updates.log\fR.
+.SH FILES
+.TP
+.B /etc/auto-updates/auto-updates.conf
+Primary configuration file containing update modes, schedules, and reboot policies.
+.TP
+.B /usr/bin/auto-updates
+The user-facing CLI utility.
+.TP
+.B /usr/libexec/auto-updates-runner
+The systemd execution wrapper that applies configurations, verifies inhibitors, and runs DNF.
+.TP
+.B /usr/lib/systemd/system/auto-updates.service
+The systemd one-shot service unit executed by the timer.
+.TP
+.B /usr/lib/systemd/system/auto-updates.timer
+The systemd calendar timer triggering update runs. Configured with \fBPersistent=true\fR.
+.TP
+.B /var/log/auto-updates.log
+Detailed execution log file.
+.SH SEE ALSO
+.BR auto-updates.conf (5),
+.BR dnf-automatic (8),
+.BR dnf5 (8),
+.BR systemctl (1)
+.SH AUTHOR
+Steve Rock Wheelhouser <steve@wheelhouser.com>
+.SH LICENSE
+GNU General Public License v3.0 or later (GPL-3.0-or-later).

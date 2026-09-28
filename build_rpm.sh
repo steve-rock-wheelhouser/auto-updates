@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 NAME="auto-updates"
-VERSION="1.0.5"
+VERSION="1.0.6"
 RELEASE="1"
 TARBALL="${NAME}-${VERSION}.tar.gz"
 
@@ -44,7 +44,7 @@ TEMP_SOURCE_DIR=$(mktemp -d)
 trap 'rm -rf "$TEMP_SOURCE_DIR"' EXIT
 
 STAGE_DIR="${TEMP_SOURCE_DIR}/${NAME}-${VERSION}"
-mkdir -p "$STAGE_DIR"/{bin,libexec,config,systemd,completions}
+mkdir -p "$STAGE_DIR"/{bin,libexec,config,systemd,completions,man}
 
 cp bin/auto-updates "$STAGE_DIR/bin/"
 cp libexec/auto-updates-runner "$STAGE_DIR/libexec/"
@@ -52,6 +52,8 @@ cp config/auto-updates.conf "$STAGE_DIR/config/"
 cp systemd/auto-updates.service "$STAGE_DIR/systemd/"
 cp systemd/auto-updates.timer "$STAGE_DIR/systemd/"
 cp completions/auto-updates.bash "$STAGE_DIR/completions/"
+cp man/auto-updates.8 "$STAGE_DIR/man/"
+cp man/auto-updates.conf.5 "$STAGE_DIR/man/"
 cp README.md "$STAGE_DIR/"
 cp LICENSE "$STAGE_DIR/"
 
@@ -98,4 +100,12 @@ if [ -n "$BUILT_RPM" ]; then
     echo ""
     echo "Files in package:"
     rpm -qpl "$BUILT_RPM"
+fi
+
+if command -v rpmlint &>/dev/null; then
+    echo ""
+    echo "================================================================================"
+    echo " Running rpmlint package quality validation..."
+    echo "================================================================================"
+    rpmlint "$BUILT_RPM" "${TOPDIR}/SPECS/auto-updates.spec" || true
 fi

@@ -1,5 +1,5 @@
 Name:           auto-updates
-Version:        1.0.5
+Version:        1.0.6
 Release:        1%{?dist}
 Summary:        CLI and automated system updater for Fedora, Rocky Linux, and AlmaLinux
 
@@ -47,6 +47,8 @@ mkdir -p %{buildroot}%{_unitdir}
 mkdir -p %{buildroot}%{_sysconfdir}/auto-updates
 mkdir -p %{buildroot}%{_sysconfdir}/dnf
 mkdir -p %{buildroot}%{_datadir}/bash-completion/completions
+mkdir -p %{buildroot}%{_mandir}/man8
+mkdir -p %{buildroot}%{_mandir}/man5
 mkdir -p %{buildroot}%{_localstatedir}/log
 
 install -p -m 0755 bin/auto-updates %{buildroot}%{_bindir}/auto-updates
@@ -55,6 +57,8 @@ install -p -m 0644 systemd/auto-updates.service %{buildroot}%{_unitdir}/auto-upd
 install -p -m 0644 systemd/auto-updates.timer %{buildroot}%{_unitdir}/auto-updates.timer
 install -p -m 0644 config/auto-updates.conf %{buildroot}%{_sysconfdir}/auto-updates/auto-updates.conf
 install -p -m 0644 completions/auto-updates.bash %{buildroot}%{_datadir}/bash-completion/completions/auto-updates
+install -p -m 0644 man/auto-updates.8 %{buildroot}%{_mandir}/man8/auto-updates.8
+install -p -m 0644 man/auto-updates.conf.5 %{buildroot}%{_mandir}/man5/auto-updates.conf.5
 
 touch %{buildroot}%{_localstatedir}/log/auto-updates.log
 
@@ -129,9 +133,16 @@ systemctl daemon-reload 2>/dev/null || true
 %dir %{_sysconfdir}/auto-updates
 %config(noreplace) %{_sysconfdir}/auto-updates/auto-updates.conf
 %{_datadir}/bash-completion/completions/auto-updates
+%{_mandir}/man8/auto-updates.8*
+%{_mandir}/man5/auto-updates.conf.5*
 %ghost %{_localstatedir}/log/auto-updates.log
 
 %changelog
+* Mon Sep 28 2026 Steve Rock Wheelhouser <steve@wheelhouser.com> - 1.0.6-1
+- Added Unix manual pages: auto-updates(8) in section 8 and auto-updates.conf(5) in section 5.
+- Documented update modes, schedules, commands, build inhibition protection, and configuration options.
+- Added automated rpmlint validation support to the package build workflow.
+
 * Mon Sep 28 2026 Steve Rock Wheelhouser <steve@wheelhouser.com> - 1.0.5-1
 - Standardized update mode naming: 'all' now executes daily full updates (matching dnf-automatic standard).
 - Added 'weekly-all' (and 'all-weekly' alias) for the hybrid daily security + weekly full updates schedule.
