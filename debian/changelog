@@ -1,3 +1,9 @@
+auto-updates (1.1.7-1) unstable; urgency=medium
+
+  * Fixed package discovery in publish.sh to dynamically target active release version.
+
+ -- Steve Rock <steve.rock@wheelhouser.com>  Mon, 28 Sep 2026 15:10:00 -0400
+
 auto-updates (1.1.6-1) unstable; urgency=medium
 
   * Added desktop launcher (Terminal=true) and AppStream metainfo for GNOME integration.

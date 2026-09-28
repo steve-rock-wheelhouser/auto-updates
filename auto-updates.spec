@@ -1,5 +1,5 @@
 Name:           auto-updates
-Version:        1.1.6
+Version:        1.1.7
 Release:        1%{?dist}
 Summary:        CLI and automated system updater for Fedora, Rocky Linux, and AlmaLinux
 
@@ -168,6 +168,9 @@ systemctl daemon-reload 2>/dev/null || true
 %ghost %attr(0640, root, root) %{_localstatedir}/log/auto-updates.log
 
 %changelog
+* Mon Sep 28 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.1.7-1
+- Fixed package discovery in publish.sh to dynamically target active release version.
+
 * Mon Sep 28 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.1.6-1
 - Added desktop application launcher (Terminal=true) and AppStream metainfo for GNOME integration.
 - Added landscape marketing banner SVG for GNOME Software and GitHub showcase.
