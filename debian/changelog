@@ -1,3 +1,9 @@
+auto-updates (1.2.1-1) unstable; urgency=medium
+
+  * Expanded status Quick CLI reference with set-reboot options (never|when-needed|when-changed), set-time, and set-day.
+
+ -- Steve Rock <steve.rock@wheelhouser.com>  Mon, 28 Sep 2026 18:45:00 -0400
+
 auto-updates (1.2.0-1) unstable; urgency=medium
 
   * Added application version to status dashboard header.

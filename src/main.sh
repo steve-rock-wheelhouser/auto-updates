@@ -46,11 +46,12 @@
 # 1.1.8 - Integrated AppStream showcase screenshots, hero banner, and branding metadata
 # 1.2.0 - Added version display to status header and quick CLI command reference prompts
 #         (auto-updates -h, man auto-updates, auto-updates run) for desktop launcher and interactive terminal sessions
+# 1.2.1 - Expanded status Quick CLI reference with set-reboot options (never|when-needed|when-changed), set-time, and set-day
 # ==============================================================================
 
 set -euo pipefail
 
-VERSION="1.2.0"
+VERSION="1.2.1"
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SRC_DIR}/.." && pwd)"

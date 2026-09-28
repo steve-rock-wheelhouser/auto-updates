@@ -53,6 +53,11 @@
     <binary>auto-updates</binary>
   </provides>
   <releases>
+    <release version="1.2.1" date="2026-09-28">
+      <description>
+        <p>Expand status dashboard Quick CLI reference with set-reboot policies (never, when-needed, when-changed), set-time, and set-day.</p>
+      </description>
+    </release>
     <release version="1.2.0" date="2026-09-28">
       <description>
         <p>Display application version in status header and provide helpful CLI reference prompts and examples for interactive and launcher terminal sessions.</p>

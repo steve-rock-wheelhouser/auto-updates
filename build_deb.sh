@@ -22,7 +22,7 @@ fi
 cd "$PROJECT_ROOT"
 
 NAME="auto-updates"
-VERSION="1.2.0"
+VERSION="1.2.1"
 RELEASE="1"
 ARCH="all"
 DEB_NAME="${NAME}_${VERSION}-${RELEASE}_${ARCH}.deb"

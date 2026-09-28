@@ -1,5 +1,5 @@
 Name:           auto-updates
-Version:        1.2.0
+Version:        1.2.1
 Release:        1%{?dist}
 Summary:        CLI and automated system updater for Fedora, Rocky Linux, and AlmaLinux
 
@@ -168,6 +168,9 @@ systemctl daemon-reload 2>/dev/null || true
 %ghost %attr(0640, root, root) %{_localstatedir}/log/auto-updates.log
 
 %changelog
+* Mon Sep 28 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.2.1-1
+- Expanded status Quick CLI reference with set-reboot options (never|when-needed|when-changed), set-time, and set-day.
+
 * Mon Sep 28 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.2.0-1
 - Added application version to status dashboard header.
 - Added quick CLI command prompts and examples (auto-updates -h, auto-updates run, man auto-updates) to status output.

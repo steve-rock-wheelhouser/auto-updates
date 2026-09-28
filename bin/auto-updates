@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-VERSION="1.2.0"
+VERSION="1.2.1"
 CONF_FILE="/etc/auto-updates/auto-updates.conf"
 DNF_AUTO_CONF="/etc/dnf/automatic.conf"
 RUNNER_BIN="/usr/libexec/auto-updates-runner"
@@ -307,8 +307,10 @@ cmd_status() {
     echo -e "  ${BOLD}Quick CLI Reference & Prompts:${RESET}"
     echo -e "    ${GREEN}auto-updates -h${RESET}              View full options and command help"
     echo -e "    ${GREEN}auto-updates run${RESET}             Trigger immediate update check & install"
-    echo -e "    ${GREEN}sudo auto-updates set-mode${RESET}   Change mode (security | all | weekly-all)"
-    echo -e "    ${GREEN}sudo auto-updates set-reboot${RESET} Configure reboot policy (never | when-needed)"
+    echo -e "    ${GREEN}sudo auto-updates set-mode${RESET}   security | all | weekly-all"
+    echo -e "    ${GREEN}sudo auto-updates set-reboot${RESET} never | when-needed | when-changed"
+    echo -e "    ${GREEN}sudo auto-updates set-time${RESET}   Change daily update time (e.g. 03:30)"
+    echo -e "    ${GREEN}sudo auto-updates set-day${RESET}    Change weekly update day (e.g. Sun)"
     echo -e "    ${GREEN}man auto-updates${RESET}             Read system manual page"
     echo -e "${BOLD}${CYAN}================================================================${RESET}"
     if [ "${1:-}" = "--wait" ] || [ "${1:-}" = "-w" ]; then
@@ -599,6 +601,7 @@ ${BOLD}EXAMPLES:${RESET}
   man auto-updates
   sudo auto-updates mode all
   sudo auto-updates set-time 04:00
+  sudo auto-updates set-day Sun
   sudo auto-updates set-reboot when-needed
   sudo auto-updates set-reboot never
   sudo auto-updates run --security
