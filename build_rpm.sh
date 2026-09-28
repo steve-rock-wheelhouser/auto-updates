@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 NAME="auto-updates"
-VERSION="1.0.6"
+VERSION="1.0.7"
 RELEASE="1"
 TARBALL="${NAME}-${VERSION}.tar.gz"
 
@@ -49,6 +49,7 @@ mkdir -p "$STAGE_DIR"/{bin,libexec,config,systemd,completions,man}
 cp bin/auto-updates "$STAGE_DIR/bin/"
 cp libexec/auto-updates-runner "$STAGE_DIR/libexec/"
 cp config/auto-updates.conf "$STAGE_DIR/config/"
+cp config/auto-updates.logrotate "$STAGE_DIR/config/"
 cp systemd/auto-updates.service "$STAGE_DIR/systemd/"
 cp systemd/auto-updates.timer "$STAGE_DIR/systemd/"
 cp completions/auto-updates.bash "$STAGE_DIR/completions/"

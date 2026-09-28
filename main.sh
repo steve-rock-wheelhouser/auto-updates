@@ -30,6 +30,8 @@
 #         'weekly-all' = hybrid weekly updates (with aliases)
 # 1.0.6 - Added Unix man pages auto-updates(8) and auto-updates.conf(5),
 #         and integrated man directory into RPM build and packaging
+# 1.0.7 - Added logrotate integration, %check validation section,
+#         and achieved strict rpmlint compliance
 # ==============================================================================
 
 set -euo pipefail
@@ -40,9 +42,9 @@ cd "$SCRIPT_DIR"
 show_menu() {
     clear
     echo "================================================================================"
-    echo "                Auto-Updates Management & Build Utility (v1.0.6)                "
+    echo "                Auto-Updates Management & Build Utility (v1.0.7)                "
     echo "================================================================================"
-    echo " 1) Build & Sign RPM Package       (Creates dist/auto-updates-1.0.6-1.noarch.rpm)"
+    echo " 1) Build & Sign RPM Package       (Creates dist/auto-updates-1.0.7-1.noarch.rpm)"
     echo " 2) Install/Upgrade RPM Package    (sudo dnf upgrade dist/auto-updates-*.rpm)"
     echo " 3) Run Local Standalone Install   (Directly installs CLI & systemd units)"
     echo " 4) Check Auto-Updates Status      (auto-updates status)"

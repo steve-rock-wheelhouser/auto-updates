@@ -1,11 +1,11 @@
 Name:           auto-updates
-Version:        1.0.6
+Version:        1.0.7
 Release:        1%{?dist}
 Summary:        CLI and automated system updater for Fedora, Rocky Linux, and AlmaLinux
 
 License:        GPL-3.0-or-later
 URL:            https://github.com/steve-rock-wheelhouser/auto-updates
-Source0:        %{name}-%{version}.tar.gz
+Source0:        %{url}/archive/v%{version}/%{name}-%{version}.tar.gz
 BuildArch:      noarch
 
 Requires:       dnf-automatic
@@ -14,23 +14,25 @@ Requires:       bash
 Requires:       coreutils
 Requires:       sed
 Requires:       gawk
+Requires:       logrotate
 
 %description
 auto-updates is a CLI utility and systemd service that configures and manages
-dnf-automatic out-of-the-box on Fedora, Rocky Linux, AlmaLinux, and RHEL.
+automated updates out-of-the-box on Fedora, Rocky Linux, AlmaLinux, and RHEL.
 
 By default, it enables daily security updates at 03:30 AM local time.
 It supports three update modes:
 - 'security': Daily security updates only.
-- 'all': Daily full updates (all packages every day, matching dnf-automatic standard).
-- 'weekly-all' (or 'all-weekly'): Daily security updates plus a weekly full update of all packages (every Sunday at 03:30 AM).
+- 'all': Daily full updates (all packages every day).
+- 'weekly-all': Daily security updates plus a weekly full update of all
+  packages (every Sunday at 03:30 AM).
 
 Features:
 - Out-of-the-box automated security updates
-- Flexible update modes (security-only, daily all updates, or hybrid weekly all updates)
+- Flexible update modes (security-only, daily all, or hybrid weekly all)
 - Daily run at 3:30 AM in the local system timezone
 - Persistent timer ensuring missed runs on sleep/boot are executed
-- Cross-platform support for DNF4 and DNF5 (Fedora, Rocky Linux, AlmaLinux, RHEL)
+- Cross-platform support for DNF4 and DNF5
 - Logging to /var/log/auto-updates.log and systemd journal
 
 %prep
@@ -39,6 +41,11 @@ Features:
 %build
 # No compilation required for shell/config sources
 
+%check
+bash -n bin/auto-updates
+bash -n libexec/auto-updates-runner
+bash -n completions/auto-updates.bash
+
 %install
 rm -rf %{buildroot}
 mkdir -p %{buildroot}%{_bindir}
@@ -46,6 +53,7 @@ mkdir -p %{buildroot}%{_libexecdir}
 mkdir -p %{buildroot}%{_unitdir}
 mkdir -p %{buildroot}%{_sysconfdir}/auto-updates
 mkdir -p %{buildroot}%{_sysconfdir}/dnf
+mkdir -p %{buildroot}%{_sysconfdir}/logrotate.d
 mkdir -p %{buildroot}%{_datadir}/bash-completion/completions
 mkdir -p %{buildroot}%{_mandir}/man8
 mkdir -p %{buildroot}%{_mandir}/man5
@@ -56,10 +64,13 @@ install -p -m 0755 libexec/auto-updates-runner %{buildroot}%{_libexecdir}/auto-u
 install -p -m 0644 systemd/auto-updates.service %{buildroot}%{_unitdir}/auto-updates.service
 install -p -m 0644 systemd/auto-updates.timer %{buildroot}%{_unitdir}/auto-updates.timer
 install -p -m 0644 config/auto-updates.conf %{buildroot}%{_sysconfdir}/auto-updates/auto-updates.conf
+install -p -m 0644 config/auto-updates.logrotate %{buildroot}%{_sysconfdir}/logrotate.d/auto-updates
 install -p -m 0644 completions/auto-updates.bash %{buildroot}%{_datadir}/bash-completion/completions/auto-updates
 install -p -m 0644 man/auto-updates.8 %{buildroot}%{_mandir}/man8/auto-updates.8
 install -p -m 0644 man/auto-updates.conf.5 %{buildroot}%{_mandir}/man5/auto-updates.conf.5
 
+mkdir -p %{buildroot}%{_localstatedir}/log/auto-updates
+touch %{buildroot}%{_localstatedir}/log/auto-updates/auto-updates.log
 touch %{buildroot}%{_localstatedir}/log/auto-updates.log
 
 %post
@@ -72,7 +83,7 @@ if [ -f %{_sysconfdir}/dnf/automatic.conf ]; then
     sed -i -E 's/^[#[:space:]]*emit_via[[:space:]]*=.*/emit_via = stdio/' %{_sysconfdir}/dnf/automatic.conf
 else
     mkdir -p %{_sysconfdir}/dnf
-    cat <<'EOF' > %{_sysconfdir}/dnf/automatic.conf
+    ( umask 022 && cat <<'EOF' > %{_sysconfdir}/dnf/automatic.conf
 [commands]
 apply_updates = yes
 download_updates = yes
@@ -83,12 +94,12 @@ network_online_timeout = 60
 [emitters]
 emit_via = stdio
 EOF
-    chmod 0644 %{_sysconfdir}/dnf/automatic.conf
+    )
 fi
 
-# Ensure log file exists with proper permissions
-touch %{_localstatedir}/log/auto-updates.log
-chmod 0640 %{_localstatedir}/log/auto-updates.log
+# Ensure log directory and file exist
+mkdir -p %{_localstatedir}/log/auto-updates
+touch %{_localstatedir}/log/auto-updates/auto-updates.log
 
 # Disable any default distribution dnf-automatic timers to prevent duplicate runs
 systemctl disable --now dnf-automatic.timer 2>/dev/null || true
@@ -132,12 +143,21 @@ systemctl daemon-reload 2>/dev/null || true
 %{_unitdir}/auto-updates.timer
 %dir %{_sysconfdir}/auto-updates
 %config(noreplace) %{_sysconfdir}/auto-updates/auto-updates.conf
+%config(noreplace) %{_sysconfdir}/logrotate.d/auto-updates
 %{_datadir}/bash-completion/completions/auto-updates
 %{_mandir}/man8/auto-updates.8*
 %{_mandir}/man5/auto-updates.conf.5*
-%ghost %{_localstatedir}/log/auto-updates.log
+%dir %{_localstatedir}/log/auto-updates
+%ghost %attr(0640, root, root) %{_localstatedir}/log/auto-updates/auto-updates.log
+%ghost %attr(0640, root, root) %{_localstatedir}/log/auto-updates.log
 
 %changelog
+* Mon Sep 28 2026 Steve Rock Wheelhouser <steve@wheelhouser.com> - 1.0.7-1
+- Added logrotate configuration in /etc/logrotate.d/auto-updates.
+- Added %%check test section validating script syntax during RPM build.
+- Refined description line wrapping, Source0 URL, and file attributes for strict rpmlint compliance.
+- Removed dangerous chmod in %%post scriptlet in favor of declarative %%attr in %%files.
+
 * Mon Sep 28 2026 Steve Rock Wheelhouser <steve@wheelhouser.com> - 1.0.6-1
 - Added Unix manual pages: auto-updates(8) in section 8 and auto-updates.conf(5) in section 5.
 - Documented update modes, schedules, commands, build inhibition protection, and configuration options.

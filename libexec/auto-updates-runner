@@ -27,7 +27,7 @@ WEEKLY_DAY="Sun"
 RANDOM_SLEEP="10"
 REBOOT="never"
 EMIT_VIA="stdio"
-LOG_FILE="/var/log/auto-updates.log"
+LOG_FILE="/var/log/auto-updates/auto-updates.log"
 REFRESH_METADATA="true"
 DEFER_REBOOT_IF_BUSY="true"
 
