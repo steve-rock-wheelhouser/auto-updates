@@ -71,6 +71,15 @@ if command -v gtk-update-icon-cache &>/dev/null; then
     gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor 2>/dev/null || true
 fi
 
+mkdir -p /usr/share/applications
+install -p -m 0644 desktop/auto-updates.desktop /usr/share/applications/auto-updates.desktop
+if command -v update-desktop-database &>/dev/null; then
+    update-desktop-database -q /usr/share/applications 2>/dev/null || true
+fi
+
+mkdir -p /usr/share/metainfo
+install -p -m 0644 desktop/auto-updates.metainfo.xml /usr/share/metainfo/auto-updates.metainfo.xml
+
 # Setup log directory
 mkdir -p /var/log/auto-updates
 touch /var/log/auto-updates/auto-updates.log

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.wheelhouser.AutoUpdates</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Auto-Updates</name>
+  <summary>Automated system package updates and reboot policy manager</summary>
+  <description>
+    <p>
+      Auto-Updates provides turnkey automated package maintenance for Linux
+      systems, including Fedora, Rocky Linux, AlmaLinux, RHEL, Debian, and Ubuntu.
+    </p>
+    <p>
+      It features daily zero-day security updates, optional weekly full upgrades,
+      intelligent build-process and compile protection, and interactive status reporting.
+    </p>
+  </description>
+  <launchable type="desktop-id">auto-updates.desktop</launchable>
+  <icon type="stock">auto-updates</icon>
+  <url type="homepage">https://github.com/steve-rock-wheelhouser/auto-updates</url>
+  <url type="bugtracker">https://github.com/steve-rock-wheelhouser/auto-updates/issues</url>
+  <developer id="com.wheelhouser">
+    <name>Steve Rock Wheelhouser</name>
+  </developer>
+  <content_rating type="oars-1.1" />
+  <categories>
+    <category>System</category>
+    <category>PackageManager</category>
+  </categories>
+  <provides>
+    <binary>auto-updates</binary>
+  </provides>
+</component>

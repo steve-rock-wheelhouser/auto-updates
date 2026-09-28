@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 NAME="auto-updates"
-VERSION="1.1.5"
+VERSION="1.1.6"
 RELEASE="1"
 TARBALL="${NAME}-${VERSION}.tar.gz"
 
@@ -45,7 +45,7 @@ TEMP_SOURCE_DIR=$(mktemp -d)
 trap 'rm -rf "$TEMP_SOURCE_DIR"' EXIT
 
 STAGE_DIR="${TEMP_SOURCE_DIR}/${NAME}-${VERSION}"
-mkdir -p "$STAGE_DIR"/{bin,libexec,config,systemd,completions,man,assets/icons}
+mkdir -p "$STAGE_DIR"/{bin,libexec,config,systemd,completions,man,assets/icons,desktop}
 
 cp bin/auto-updates "$STAGE_DIR/bin/"
 cp libexec/auto-updates-runner "$STAGE_DIR/libexec/"
@@ -57,6 +57,8 @@ cp completions/auto-updates.bash "$STAGE_DIR/completions/"
 cp man/auto-updates.8 "$STAGE_DIR/man/"
 cp man/auto-updates.conf.5 "$STAGE_DIR/man/"
 cp assets/icons/auto-updates.svg "$STAGE_DIR/assets/icons/"
+cp desktop/auto-updates.desktop "$STAGE_DIR/desktop/"
+cp desktop/auto-updates.metainfo.xml "$STAGE_DIR/desktop/"
 cp README.md "$STAGE_DIR/"
 cp LICENSE "$STAGE_DIR/"
 

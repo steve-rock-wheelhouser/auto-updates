@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 NAME="auto-updates"
-VERSION="1.1.5"
+VERSION="1.1.6"
 RELEASE="1"
 ARCH="all"
 DEB_NAME="${NAME}_${VERSION}-${RELEASE}_${ARCH}.deb"
@@ -33,7 +33,7 @@ mkdir -p "${SCRIPT_DIR}/dist"
 mkdir -p "${SCRIPT_DIR}/build-linux/Output"/{debian/13,ubuntu/26.04}
 
 STAGE_DIR="${BUILD_ROOT}/pkg"
-mkdir -p "${STAGE_DIR}"/{DEBIAN,usr/bin,usr/libexec,lib/systemd/system,etc/auto-updates,etc/logrotate.d,usr/share/bash-completion/completions,usr/share/man/man8,usr/share/man/man5,usr/share/doc/auto-updates,usr/share/icons/hicolor/scalable/apps}
+mkdir -p "${STAGE_DIR}"/{DEBIAN,usr/bin,usr/libexec,lib/systemd/system,etc/auto-updates,etc/logrotate.d,usr/share/bash-completion/completions,usr/share/man/man8,usr/share/man/man5,usr/share/doc/auto-updates,usr/share/icons/hicolor/scalable/apps,usr/share/applications,usr/share/metainfo}
 
 # Install application files
 install -p -m 0755 bin/auto-updates "${STAGE_DIR}/usr/bin/auto-updates"
@@ -44,6 +44,8 @@ install -p -m 0644 config/auto-updates.conf "${STAGE_DIR}/etc/auto-updates/auto-
 install -p -m 0644 config/auto-updates.logrotate "${STAGE_DIR}/etc/logrotate.d/auto-updates"
 install -p -m 0644 completions/auto-updates.bash "${STAGE_DIR}/usr/share/bash-completion/completions/auto-updates"
 install -p -m 0644 assets/icons/auto-updates.svg "${STAGE_DIR}/usr/share/icons/hicolor/scalable/apps/auto-updates.svg"
+install -p -m 0644 desktop/auto-updates.desktop "${STAGE_DIR}/usr/share/applications/auto-updates.desktop"
+install -p -m 0644 desktop/auto-updates.metainfo.xml "${STAGE_DIR}/usr/share/metainfo/auto-updates.metainfo.xml"
 install -p -m 0644 README.md "${STAGE_DIR}/usr/share/doc/auto-updates/README.md"
 install -p -m 0644 debian/copyright "${STAGE_DIR}/usr/share/doc/auto-updates/copyright"
 

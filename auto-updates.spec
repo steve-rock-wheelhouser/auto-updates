@@ -1,5 +1,5 @@
 Name:           auto-updates
-Version:        1.1.5
+Version:        1.1.6
 Release:        1%{?dist}
 Summary:        CLI and automated system updater for Fedora, Rocky Linux, and AlmaLinux
 
@@ -8,6 +8,7 @@ URL:            https://github.com/steve-rock-wheelhouser/auto-updates
 Source0:        %{url}/archive/v%{version}/%{name}-%{version}.tar.gz
 BuildArch:      noarch
 
+BuildRequires:  desktop-file-utils
 Requires:       dnf-automatic
 Requires:       systemd
 Requires:       bash
@@ -72,6 +73,13 @@ install -p -m 0644 man/auto-updates.conf.5 %{buildroot}%{_mandir}/man5/auto-upda
 
 mkdir -p %{buildroot}%{_datadir}/icons/hicolor/scalable/apps
 install -p -m 0644 assets/icons/auto-updates.svg %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/auto-updates.svg
+
+mkdir -p %{buildroot}%{_datadir}/applications
+install -p -m 0644 desktop/auto-updates.desktop %{buildroot}%{_datadir}/applications/auto-updates.desktop
+desktop-file-validate %{buildroot}%{_datadir}/applications/auto-updates.desktop
+
+mkdir -p %{buildroot}%{_datadir}/metainfo
+install -p -m 0644 desktop/auto-updates.metainfo.xml %{buildroot}%{_datadir}/metainfo/auto-updates.metainfo.xml
 
 mkdir -p %{buildroot}%{_localstatedir}/log/auto-updates
 touch %{buildroot}%{_localstatedir}/log/auto-updates/auto-updates.log
@@ -151,6 +159,8 @@ systemctl daemon-reload 2>/dev/null || true
 %config(noreplace) %{_sysconfdir}/logrotate.d/auto-updates
 %{_datadir}/bash-completion/completions/auto-updates
 %{_datadir}/icons/hicolor/scalable/apps/auto-updates.svg
+%{_datadir}/applications/auto-updates.desktop
+%{_datadir}/metainfo/auto-updates.metainfo.xml
 %{_mandir}/man8/auto-updates.8*
 %{_mandir}/man5/auto-updates.conf.5*
 %dir %{_localstatedir}/log/auto-updates
@@ -158,6 +168,11 @@ systemctl daemon-reload 2>/dev/null || true
 %ghost %attr(0640, root, root) %{_localstatedir}/log/auto-updates.log
 
 %changelog
+* Mon Sep 28 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.1.6-1
+- Added desktop application launcher (Terminal=true) and AppStream metainfo for GNOME integration.
+- Added landscape marketing banner SVG for GNOME Software and GitHub showcase.
+- Supported --wait / -w in 'auto-updates status' for clean terminal desktop launch.
+
 * Mon Sep 28 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.1.5-1
 - Added value proposition and global marketing strategy documentation.
 

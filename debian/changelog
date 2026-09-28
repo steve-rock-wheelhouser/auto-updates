@@ -1,3 +1,11 @@
+auto-updates (1.1.6-1) unstable; urgency=medium
+
+  * Added desktop launcher (Terminal=true) and AppStream metainfo for GNOME integration.
+  * Added landscape marketing banner SVG for GNOME Software and GitHub showcase.
+  * Supported --wait / -w in 'auto-updates status' for terminal desktop launch.
+
+ -- Steve Rock <steve.rock@wheelhouser.com>  Mon, 28 Sep 2026 14:35:00 -0400
+
 auto-updates (1.1.5-1) unstable; urgency=medium
 
   * Added value proposition and global marketing strategy documentation.

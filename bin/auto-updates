@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-VERSION="1.1.5"
+VERSION="1.1.6"
 CONF_FILE="/etc/auto-updates/auto-updates.conf"
 DNF_AUTO_CONF="/etc/dnf/automatic.conf"
 RUNNER_BIN="/usr/libexec/auto-updates-runner"
@@ -299,6 +299,11 @@ cmd_status() {
     fi
 
     echo -e "${BOLD}${CYAN}================================================================${RESET}"
+    if [ "${1:-}" = "--wait" ] || [ "${1:-}" = "-w" ]; then
+        echo ""
+        read -n 1 -s -r -p "Press any key to close..."
+        echo ""
+    fi
 }
 
 cmd_set_mode() {
@@ -597,7 +602,7 @@ shift || true
 
 case "$ACTION" in
     status|-s|--status)
-        cmd_status
+        cmd_status "$@"
         ;;
     set-mode|mode)
         cmd_set_mode "$@"

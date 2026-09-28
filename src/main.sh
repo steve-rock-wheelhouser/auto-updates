@@ -41,11 +41,12 @@
 # 1.1.3 - Corrected author and maintainer email address to steve.rock@wheelhouser.com
 # 1.1.4 - Enhanced set-reboot help output and documentation with detailed policy explanations
 # 1.1.5 - Added comprehensive value proposition and global marketing strategy documentation
+# 1.1.6 - Added desktop launcher (Terminal=true), AppStream metainfo, and marketing banner SVG
 # ==============================================================================
 
 set -euo pipefail
 
-VERSION="1.1.5"
+VERSION="1.1.6"
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SRC_DIR}/.." && pwd)"
