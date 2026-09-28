@@ -1,3 +1,9 @@
+auto-updates (1.1.1-1) unstable; urgency=medium
+
+  * Added official scalable vector icon (auto-updates.svg) and hicolor desktop icon integration.
+
+ -- Steve Rock Wheelhouser <steve@wheelhouser.com>  Mon, 28 Sep 2026 13:25:00 -0400
+
 auto-updates (1.1.0-1) unstable; urgency=medium
 
   * Added native Debian and Ubuntu (.deb) support.

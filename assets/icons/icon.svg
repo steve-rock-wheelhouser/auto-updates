@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Background Gradients -->
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a1020" />
+      <stop offset="50%" stop-color="#0e1a36" />
+      <stop offset="100%" stop-color="#060a14" />
+    </linearGradient>
+
+    <radialGradient id="center-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.25" />
+      <stop offset="55%" stop-color="#0284c7" stop-opacity="0.08" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+    </radialGradient>
+
+    <linearGradient id="border-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.70" />
+      <stop offset="45%" stop-color="#818cf8" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0.60" />
+    </linearGradient>
+
+    <!-- Arrow Gradients -->
+    <linearGradient id="arrow-top" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00f2fe" />
+      <stop offset="60%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+
+    <linearGradient id="arrow-bottom" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="50%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#00f2fe" />
+    </linearGradient>
+
+    <!-- Shield Gradients -->
+    <linearGradient id="shield-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#14284b" />
+      <stop offset="60%" stop-color="#0b172e" />
+      <stop offset="100%" stop-color="#060c18" />
+    </linearGradient>
+
+    <linearGradient id="shield-border" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.90" />
+      <stop offset="100%" stop-color="#1d4ed8" stop-opacity="0.45" />
+    </linearGradient>
+
+    <linearGradient id="check-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="20" stdDeviation="28" flood-color="#000000" flood-opacity="0.65" />
+    </filter>
+
+    <filter id="shield-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="22" flood-color="#0284c7" flood-opacity="0.32" />
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#000000" flood-opacity="0.55" />
+    </filter>
+
+    <filter id="arrow-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#0284c7" flood-opacity="0.35" />
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000000" flood-opacity="0.40" />
+    </filter>
+
+    <filter id="glow-light" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Base Squircle -->
+  <rect x="32" y="32" width="960" height="960" rx="224" ry="224" fill="url(#bg-grad)" filter="url(#shadow)" stroke="url(#border-grad)" stroke-width="10" />
+
+  <!-- Center Radial Glow -->
+  <circle cx="512" cy="512" r="440" fill="url(#center-glow)" />
+
+  <!-- Subtle Concentric Tech Track Rings -->
+  <circle cx="512" cy="512" r="410" fill="none" stroke="#38bdf8" stroke-opacity="0.06" stroke-width="2" />
+  <circle cx="512" cy="512" r="330" fill="none" stroke="#38bdf8" stroke-opacity="0.14" stroke-width="3" stroke-dasharray="10 16" />
+  <circle cx="512" cy="512" r="235" fill="none" stroke="#38bdf8" stroke-opacity="0.08" stroke-width="2" stroke-dasharray="6 12" />
+
+  <!-- 4 Cardinal Orbital Pips -->
+  <circle cx="512" cy="182" r="6" fill="#38bdf8" opacity="0.6" />
+  <circle cx="842" cy="512" r="6" fill="#38bdf8" opacity="0.6" />
+  <circle cx="512" cy="842" r="6" fill="#38bdf8" opacity="0.6" />
+  <circle cx="182" cy="512" r="6" fill="#38bdf8" opacity="0.6" />
+
+  <!-- Dual Update Sync Arrows with Depth Shadow -->
+  <g filter="url(#arrow-shadow)">
+    <!-- Upper Arc (from ~205° to ~346°) -->
+    <path d="M 212.9 372.5 A 330 330 0 0 1 832.2 432.2"
+          fill="none" stroke="url(#arrow-top)" stroke-width="48" stroke-linecap="round" />
+    <polygon points="848.6,498.1 782.2,413.7 830.3,424.4 867.6,392.4" fill="#3b82f6" stroke="url(#arrow-top)" stroke-width="4" stroke-linejoin="round" />
+
+    <!-- Lower Arc (from ~25° to ~166°) -->
+    <path d="M 811.1 651.5 A 330 330 0 0 1 191.8 591.8"
+          fill="none" stroke="url(#arrow-bottom)" stroke-width="48" stroke-linecap="round" />
+    <polygon points="175.4,525.9 241.8,610.3 193.7,599.6 156.4,631.6" fill="#00f2fe" stroke="url(#arrow-bottom)" stroke-width="4" stroke-linejoin="round" />
+  </g>
+
+  <!-- Central Security Shield Emblem -->
+  <g filter="url(#shield-shadow)">
+    <!-- Outer Shield Frame -->
+    <path d="M 512 340
+             C 560 340 642 355 656 375
+             C 660 440 655 530 635 590
+             C 605 675 530 730 512 748
+             C 494 730 419 675 389 590
+             C 369 530 364 440 368 375
+             C 382 355 464 340 512 340 Z"
+          fill="url(#shield-grad)" stroke="url(#shield-border)" stroke-width="8" stroke-linejoin="round" />
+
+    <!-- Left Bevel Highlight -->
+    <path d="M 512 346
+             C 468 346 392 360 378 378
+             C 375 440 379 525 397 583
+             C 425 662 494 715 512 738
+             L 512 346 Z"
+          fill="#ffffff" fill-opacity="0.08" />
+
+    <!-- Right Bevel Shade -->
+    <path d="M 512 346
+             C 556 346 632 360 646 378
+             C 649 440 645 525 627 583
+             C 599 662 530 715 512 738
+             L 512 346 Z"
+          fill="#000000" fill-opacity="0.22" />
+
+    <!-- Inner Shield Inset Ridge -->
+    <path d="M 512 375
+             C 545 375 605 387 618 402
+             C 621 450 617 518 602 566
+             C 578 633 524 675 512 690
+             C 500 675 446 633 422 566
+             C 407 518 403 450 406 402
+             C 419 387 479 375 512 375 Z"
+          fill="none" stroke="#38bdf8" stroke-opacity="0.28" stroke-width="2.5" />
+
+    <!-- Glowing Checkmark / Verified Secure Symbol -->
+    <path d="M 442 535 L 492 585 L 588 475"
+          fill="none" stroke="url(#check-grad)" stroke-width="36" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow-light)" />
+    <!-- White Core Specular Highlight -->
+    <path d="M 442 535 L 492 585 L 588 475"
+          fill="none" stroke="#ffffff" stroke-opacity="0.9" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+</svg>

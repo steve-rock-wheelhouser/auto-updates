@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-VERSION="1.1.0"
+VERSION="1.1.1"
 CONF_FILE="/etc/auto-updates/auto-updates.conf"
 DNF_AUTO_CONF="/etc/dnf/automatic.conf"
 RUNNER_BIN="/usr/libexec/auto-updates-runner"

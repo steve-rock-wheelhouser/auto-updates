@@ -34,6 +34,7 @@
 #         and achieved strict rpmlint compliance
 # 1.0.8 - Moved main entry point to src/main.sh per Wheelhouser LLC project standards
 # 1.1.0 - Added native Debian/Ubuntu (.deb) packaging and APT backend support
+# 1.1.1 - Added official scalable vector icon (icon.svg) and hicolor desktop icon integration
 # ==============================================================================
 
 set -euo pipefail
@@ -45,10 +46,10 @@ cd "$PROJECT_ROOT"
 show_menu() {
     clear
     echo "================================================================================"
-    echo "                Auto-Updates Management & Build Utility (v1.1.0)                "
+    echo "                Auto-Updates Management & Build Utility (v1.1.1)                "
     echo "================================================================================"
-    echo " 1) Build & Sign RPM Package       (Creates dist/auto-updates-1.1.0-1.noarch.rpm)"
-    echo " 2) Build Debian (.deb) Package    (Creates dist/auto-updates_1.1.0-1_all.deb)"
+    echo " 1) Build & Sign RPM Package       (Creates dist/auto-updates-1.1.1-1.noarch.rpm)"
+    echo " 2) Build Debian (.deb) Package    (Creates dist/auto-updates_1.1.1-1_all.deb)"
     echo " 3) Install/Upgrade RPM Package    (sudo dnf upgrade dist/auto-updates-*.rpm)"
     echo " 4) Run Local Standalone Install   (Directly installs CLI & systemd units)"
     echo " 5) Check Auto-Updates Status      (auto-updates status)"

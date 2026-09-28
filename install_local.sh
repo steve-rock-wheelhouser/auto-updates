@@ -65,6 +65,12 @@ mkdir -p /usr/share/man/man8 /usr/share/man/man5
 install -p -m 0644 man/auto-updates.8 /usr/share/man/man8/auto-updates.8
 install -p -m 0644 man/auto-updates.conf.5 /usr/share/man/man5/auto-updates.conf.5
 
+mkdir -p /usr/share/icons/hicolor/scalable/apps
+install -p -m 0644 assets/icons/auto-updates.svg /usr/share/icons/hicolor/scalable/apps/auto-updates.svg
+if command -v gtk-update-icon-cache &>/dev/null; then
+    gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor 2>/dev/null || true
+fi
+
 # Setup log directory
 mkdir -p /var/log/auto-updates
 touch /var/log/auto-updates/auto-updates.log

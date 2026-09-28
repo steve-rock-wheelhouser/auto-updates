@@ -7,3 +7,4 @@ config/auto-updates.logrotate etc/logrotate.d/
 completions/auto-updates.bash usr/share/bash-completion/completions/
 man/auto-updates.8 usr/share/man/man8/
 man/auto-updates.conf.5 usr/share/man/man5/
+assets/icons/auto-updates.svg usr/share/icons/hicolor/scalable/apps/

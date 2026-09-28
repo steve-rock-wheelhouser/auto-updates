@@ -1,5 +1,5 @@
 Name:           auto-updates
-Version:        1.1.0
+Version:        1.1.1
 Release:        1%{?dist}
 Summary:        CLI and automated system updater for Fedora, Rocky Linux, and AlmaLinux
 
@@ -68,6 +68,9 @@ install -p -m 0644 config/auto-updates.logrotate %{buildroot}%{_sysconfdir}/logr
 install -p -m 0644 completions/auto-updates.bash %{buildroot}%{_datadir}/bash-completion/completions/auto-updates
 install -p -m 0644 man/auto-updates.8 %{buildroot}%{_mandir}/man8/auto-updates.8
 install -p -m 0644 man/auto-updates.conf.5 %{buildroot}%{_mandir}/man5/auto-updates.conf.5
+
+mkdir -p %{buildroot}%{_datadir}/icons/hicolor/scalable/apps
+install -p -m 0644 assets/icons/auto-updates.svg %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/auto-updates.svg
 
 mkdir -p %{buildroot}%{_localstatedir}/log/auto-updates
 touch %{buildroot}%{_localstatedir}/log/auto-updates/auto-updates.log
@@ -145,6 +148,7 @@ systemctl daemon-reload 2>/dev/null || true
 %config(noreplace) %{_sysconfdir}/auto-updates/auto-updates.conf
 %config(noreplace) %{_sysconfdir}/logrotate.d/auto-updates
 %{_datadir}/bash-completion/completions/auto-updates
+%{_datadir}/icons/hicolor/scalable/apps/auto-updates.svg
 %{_mandir}/man8/auto-updates.8*
 %{_mandir}/man5/auto-updates.conf.5*
 %dir %{_localstatedir}/log/auto-updates
@@ -152,6 +156,9 @@ systemctl daemon-reload 2>/dev/null || true
 %ghost %attr(0640, root, root) %{_localstatedir}/log/auto-updates.log
 
 %changelog
+* Mon Sep 28 2026 Steve Rock Wheelhouser <steve@wheelhouser.com> - 1.1.1-1
+- Added official scalable vector icon (auto-updates.svg) and hicolor desktop icon integration.
+
 * Mon Sep 28 2026 Steve Rock Wheelhouser <steve@wheelhouser.com> - 1.1.0-1
 - Added native multi-distribution support for Debian and Ubuntu systems.
 - Implemented APT backend integration with unattended-upgrades.
