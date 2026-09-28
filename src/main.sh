@@ -32,19 +32,21 @@
 #         and integrated man directory into RPM build and packaging
 # 1.0.7 - Added logrotate integration, %check validation section,
 #         and achieved strict rpmlint compliance
+# 1.0.8 - Moved main entry point to src/main.sh per Wheelhouser LLC project standards
 # ==============================================================================
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SRC_DIR}/.." && pwd)"
+cd "$PROJECT_ROOT"
 
 show_menu() {
     clear
     echo "================================================================================"
-    echo "                Auto-Updates Management & Build Utility (v1.0.7)                "
+    echo "                Auto-Updates Management & Build Utility (v1.0.8)                "
     echo "================================================================================"
-    echo " 1) Build & Sign RPM Package       (Creates dist/auto-updates-1.0.7-1.noarch.rpm)"
+    echo " 1) Build & Sign RPM Package       (Creates dist/auto-updates-1.0.8-1.noarch.rpm)"
     echo " 2) Install/Upgrade RPM Package    (sudo dnf upgrade dist/auto-updates-*.rpm)"
     echo " 3) Run Local Standalone Install   (Directly installs CLI & systemd units)"
     echo " 4) Check Auto-Updates Status      (auto-updates status)"

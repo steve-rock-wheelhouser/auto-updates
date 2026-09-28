@@ -1,5 +1,5 @@
 Name:           auto-updates
-Version:        1.0.7
+Version:        1.0.8
 Release:        1%{?dist}
 Summary:        CLI and automated system updater for Fedora, Rocky Linux, and AlmaLinux
 
@@ -152,6 +152,10 @@ systemctl daemon-reload 2>/dev/null || true
 %ghost %attr(0640, root, root) %{_localstatedir}/log/auto-updates.log
 
 %changelog
+* Mon Sep 28 2026 Steve Rock Wheelhouser <steve@wheelhouser.com> - 1.0.8-1
+- Moved project management entry point to src/main.sh per Wheelhouser LLC project standards.
+- Added AGENTS.md documenting mandatory version bump and changelog policies.
+
 * Mon Sep 28 2026 Steve Rock Wheelhouser <steve@wheelhouser.com> - 1.0.7-1
 - Added logrotate configuration in /etc/logrotate.d/auto-updates.
 - Added %%check test section validating script syntax during RPM build.
