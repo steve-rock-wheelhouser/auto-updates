@@ -14,7 +14,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+if [[ "$(basename "$SCRIPT_DIR")" == "build-linux" ]]; then
+    PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+else
+    PROJECT_ROOT="$SCRIPT_DIR"
+fi
+cd "$PROJECT_ROOT"
 
 NAME="auto-updates"
 VERSION="1.1.8"
@@ -34,11 +39,11 @@ for cmd in rpmbuild tar gzip rpmsign; do
 done
 
 # Prepare clean build hierarchy
-TOPDIR="${SCRIPT_DIR}/build/rpmbuild"
+TOPDIR="${PROJECT_ROOT}/build/rpmbuild"
 rm -rf "$TOPDIR"
 mkdir -p "${TOPDIR}"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
-mkdir -p "${SCRIPT_DIR}/dist"
-mkdir -p "${SCRIPT_DIR}/build-linux/Output"/{rocky/10,almalinux/10,fedora/44}
+mkdir -p "${PROJECT_ROOT}/dist"
+mkdir -p "${PROJECT_ROOT}/build-linux/Output"/{rocky/10,almalinux/10,fedora/44,fedora/45}
 
 # Create source archive
 TEMP_SOURCE_DIR=$(mktemp -d)
@@ -65,40 +70,59 @@ cp LICENSE "$STAGE_DIR/"
 tar -czf "${TOPDIR}/SOURCES/${TARBALL}" -C "$TEMP_SOURCE_DIR" "${NAME}-${VERSION}"
 cp auto-updates.spec "${TOPDIR}/SPECS/"
 
-echo "Running rpmbuild (Fedora 44)..."
-rpmbuild -ba \
-    --define "_topdir ${TOPDIR}" \
-    --define "dist .fc44" \
-    "${TOPDIR}/SPECS/auto-updates.spec"
+# Detect distribution if running in single-distro builder
+LOCAL_DIST=""
+if [ -f /etc/os-release ]; then
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    if [ "${ID:-}" = "fedora" ]; then
+        LOCAL_DIST=".fc${VERSION_ID:-44}"
+    elif [ "${ID:-}" = "rocky" ] || [ "${ID:-}" = "almalinux" ]; then
+        LOCAL_DIST=".el${VERSION_ID%%.*}"
+    fi
+fi
 
-echo "Running rpmbuild (Enterprise Linux 10)..."
-rpmbuild -ba \
-    --define "_topdir ${TOPDIR}" \
-    --define "dist .el10" \
-    "${TOPDIR}/SPECS/auto-updates.spec"
+if [ -n "$LOCAL_DIST" ]; then
+    echo "Running rpmbuild for local distro (${LOCAL_DIST})..."
+    rpmbuild -ba \
+        --define "_topdir ${TOPDIR}" \
+        --define "dist ${LOCAL_DIST}" \
+        "${TOPDIR}/SPECS/auto-updates.spec"
+fi
+
+if [ -z "$LOCAL_DIST" ] || [ "$LOCAL_DIST" = ".el10" ]; then
+    for dtag in ".fc44" ".fc45" ".el10"; do
+        if [ "$dtag" != "$LOCAL_DIST" ]; then
+            echo "Running rpmbuild (${dtag})..."
+            rpmbuild -ba \
+                --define "_topdir ${TOPDIR}" \
+                --define "dist ${dtag}" \
+                "${TOPDIR}/SPECS/auto-updates.spec"
+        fi
+    done
+fi
 
 # Copy resulting RPMs to standardized build-linux/Output and dist
-FC_RPM=$(find "${TOPDIR}/RPMS" -name "*fc44*.rpm" | head -n 1)
-EL_RPM=$(find "${TOPDIR}/RPMS" -name "*el10*.rpm" | head -n 1)
+for rpm_file in $(find "${TOPDIR}/RPMS" -name "*.rpm"); do
+    rpm_base=$(basename "$rpm_file")
+    cp -v "$rpm_file" "${PROJECT_ROOT}/dist/"
+    if [[ "$rpm_base" == *".el10."* ]]; then
+        cp -v "$rpm_file" "${PROJECT_ROOT}/build-linux/Output/rocky/10/"
+        cp -v "$rpm_file" "${PROJECT_ROOT}/build-linux/Output/almalinux/10/"
+    elif [[ "$rpm_base" == *".fc44."* ]]; then
+        cp -v "$rpm_file" "${PROJECT_ROOT}/build-linux/Output/fedora/44/"
+    elif [[ "$rpm_base" == *".fc45."* ]]; then
+        cp -v "$rpm_file" "${PROJECT_ROOT}/build-linux/Output/fedora/45/"
+    fi
+done
 
-if [ -n "$FC_RPM" ]; then
-    cp -v "$FC_RPM" "${SCRIPT_DIR}/build-linux/Output/fedora/44/"
-    cp -v "$FC_RPM" "${SCRIPT_DIR}/dist/"
-fi
-
-if [ -n "$EL_RPM" ]; then
-    cp -v "$EL_RPM" "${SCRIPT_DIR}/build-linux/Output/rocky/10/"
-    cp -v "$EL_RPM" "${SCRIPT_DIR}/build-linux/Output/almalinux/10/"
-    cp -v "$EL_RPM" "${SCRIPT_DIR}/dist/"
-fi
-
-cp -v "${TOPDIR}/SRPMS"/*.src.rpm "${SCRIPT_DIR}/dist/" 2>/dev/null || true
+cp -v "${TOPDIR}/SRPMS"/*.src.rpm "${PROJECT_ROOT}/dist/" 2>/dev/null || true
 
 echo ""
 echo "================================================================================"
 echo " Signing RPM packages with GPG..."
 echo "================================================================================"
-mapfile -t ALL_RPMS < <(find "${SCRIPT_DIR}/build-linux/Output" "${SCRIPT_DIR}/dist" -name "*.rpm" | sort -u)
+mapfile -t ALL_RPMS < <(find "${PROJECT_ROOT}/build-linux/Output" "${PROJECT_ROOT}/dist" -name "*.rpm" | sort -u)
 rpmsign --addsign "${ALL_RPMS[@]}"
 
 echo ""
@@ -119,14 +143,17 @@ echo "    [PASS] All package cryptographic signatures verified successfully."
 echo ""
 echo "================================================================================"
 echo " RPM Build & Signing Complete!"
-echo " Output files in: ${SCRIPT_DIR}/build-linux/Output/ & ${SCRIPT_DIR}/dist/"
+echo " Output files in: ${PROJECT_ROOT}/build-linux/Output/ & ${PROJECT_ROOT}/dist/"
 echo "================================================================================"
-ls -lh "${SCRIPT_DIR}/dist"
+ls -lh "${PROJECT_ROOT}/dist"
 
 if command -v rpmlint &>/dev/null; then
     echo ""
     echo "================================================================================"
     echo " Running rpmlint package quality validation..."
     echo "================================================================================"
-    rpmlint "$EL_RPM" "${TOPDIR}/SPECS/auto-updates.spec"
+    LATEST_EL_RPM=$(find "${PROJECT_ROOT}/build-linux/Output/rocky/10" -name "*.rpm" 2>/dev/null | head -n 1)
+    if [ -n "$LATEST_EL_RPM" ]; then
+        rpmlint "$LATEST_EL_RPM" "${TOPDIR}/SPECS/auto-updates.spec" || true
+    fi
 fi

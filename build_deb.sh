@@ -14,7 +14,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+if [[ "$(basename "$SCRIPT_DIR")" == "build-linux" ]]; then
+    PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+else
+    PROJECT_ROOT="$SCRIPT_DIR"
+fi
+cd "$PROJECT_ROOT"
 
 NAME="auto-updates"
 VERSION="1.1.8"
@@ -26,11 +31,11 @@ echo "==========================================================================
 echo " Building Debian/Ubuntu (.deb) package: ${DEB_NAME}"
 echo "================================================================================"
 
-BUILD_ROOT="${SCRIPT_DIR}/build/deb"
+BUILD_ROOT="${PROJECT_ROOT}/build/deb"
 rm -rf "$BUILD_ROOT"
 mkdir -p "$BUILD_ROOT"
-mkdir -p "${SCRIPT_DIR}/dist"
-mkdir -p "${SCRIPT_DIR}/build-linux/Output"/{debian/13,ubuntu/26.04}
+mkdir -p "${PROJECT_ROOT}/dist"
+mkdir -p "${PROJECT_ROOT}/build-linux/Output"/{debian/13,ubuntu/26.04}
 
 STAGE_DIR="${BUILD_ROOT}/pkg"
 mkdir -p "${STAGE_DIR}"/{DEBIAN,usr/bin,usr/libexec,lib/systemd/system,etc/auto-updates,etc/logrotate.d,usr/share/bash-completion/completions,usr/share/man/man8,usr/share/man/man5,usr/share/doc/auto-updates,usr/share/icons/hicolor/scalable/apps,usr/share/applications,usr/share/metainfo}
@@ -97,7 +102,7 @@ EOF
     chmod 0644 DEBIAN/md5sums
 )
 
-DEST_DEB="${SCRIPT_DIR}/dist/${DEB_NAME}"
+DEST_DEB="${PROJECT_ROOT}/dist/${DEB_NAME}"
 
 if command -v dpkg-deb &>/dev/null; then
     echo "Building .deb using dpkg-deb..."
@@ -125,14 +130,14 @@ else
     )
 fi
 
-cp -v "$DEST_DEB" "${SCRIPT_DIR}/build-linux/Output/debian/13/"
-cp -v "$DEST_DEB" "${SCRIPT_DIR}/build-linux/Output/ubuntu/26.04/"
+cp -v "$DEST_DEB" "${PROJECT_ROOT}/build-linux/Output/debian/13/"
+cp -v "$DEST_DEB" "${PROJECT_ROOT}/build-linux/Output/ubuntu/26.04/"
 
 echo ""
 echo "================================================================================"
 echo " Debian Package Built Successfully!"
 echo " Package: ${DEST_DEB}"
-echo " Output directories: ${SCRIPT_DIR}/build-linux/Output/debian/13 & ubuntu/26.04"
+echo " Output directories: ${PROJECT_ROOT}/build-linux/Output/debian/13 & ubuntu/26.04"
 echo "================================================================================"
 ls -lh "$DEST_DEB"
 
