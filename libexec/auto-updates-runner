@@ -156,19 +156,48 @@ EOF
     fi
 }
 
-# Update /etc/dnf/automatic.conf to match current execution parameters
-if [ "$DRY_RUN" = true ]; then
-    set_ini_val "$DNF_AUTO_CONF" "apply_updates" "no" "commands"
-    set_ini_val "$DNF_AUTO_CONF" "download_updates" "yes" "commands"
-else
-    set_ini_val "$DNF_AUTO_CONF" "apply_updates" "yes" "commands"
-    set_ini_val "$DNF_AUTO_CONF" "download_updates" "yes" "commands"
-fi
-set_ini_val "$DNF_AUTO_CONF" "upgrade_type" "$UPGRADE_TYPE" "commands"
-set_ini_val "$DNF_AUTO_CONF" "random_sleep" "0" "commands"
-set_ini_val "$DNF_AUTO_CONF" "emit_via" "$EMIT_VIA" "emitters"
+detect_backend() {
+    if [ -f /etc/os-release ]; then
+        local os_id=""
+        os_id=$(grep -E '^(ID|ID_LIKE)=' /etc/os-release 2>/dev/null || true)
+        case "$os_id" in
+            *debian*|*ubuntu*)
+                echo "apt"
+                return 0
+                ;;
+        esac
+    fi
 
-# Execute DNF Automatic update
+    if command -v dnf5 &>/dev/null && dnf5 automatic --help &>/dev/null; then
+        echo "dnf5"
+    elif command -v dnf-automatic &>/dev/null; then
+        echo "dnf4"
+    elif command -v dnf &>/dev/null; then
+        echo "dnf"
+    elif command -v apt-get &>/dev/null; then
+        echo "apt"
+    else
+        echo "unknown"
+    fi
+}
+
+BACKEND=$(detect_backend)
+
+# Update /etc/dnf/automatic.conf on RPM systems
+if [ "$BACKEND" != "apt" ]; then
+    if [ "$DRY_RUN" = true ]; then
+        set_ini_val "$DNF_AUTO_CONF" "apply_updates" "no" "commands"
+        set_ini_val "$DNF_AUTO_CONF" "download_updates" "yes" "commands"
+    else
+        set_ini_val "$DNF_AUTO_CONF" "apply_updates" "yes" "commands"
+        set_ini_val "$DNF_AUTO_CONF" "download_updates" "yes" "commands"
+    fi
+    set_ini_val "$DNF_AUTO_CONF" "upgrade_type" "$UPGRADE_TYPE" "commands"
+    set_ini_val "$DNF_AUTO_CONF" "random_sleep" "0" "commands"
+    set_ini_val "$DNF_AUTO_CONF" "emit_via" "$EMIT_VIA" "emitters"
+fi
+
+# Execute update transaction
 EXEC_START=$(date +%s)
 STATUS=0
 
@@ -177,7 +206,43 @@ if [ "$REFRESH_METADATA" = "true" ]; then
     REFRESH_OPT="--refresh"
 fi
 
-if command -v dnf5 &>/dev/null && dnf5 automatic --help &>/dev/null; then
+if [ "$BACKEND" = "apt" ]; then
+    log "INFO" "Using backend: APT / Unattended-Upgrades (refresh: ${REFRESH_METADATA})"
+    if [ "$REFRESH_METADATA" = "true" ]; then
+        log "INFO" "Refreshing APT package indices (apt-get update)..."
+        apt-get update -qq 2>&1 | tee -a "$LOG_FILE" || true
+    fi
+
+    if [ "$UPGRADE_TYPE" = "security" ]; then
+        if command -v unattended-upgrade &>/dev/null; then
+            if [ "$DRY_RUN" = true ]; then
+                log "INFO" "Simulating security updates via unattended-upgrade --dry-run..."
+                unattended-upgrade --dry-run 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+            else
+                log "INFO" "Applying security updates via unattended-upgrade..."
+                unattended-upgrade -d 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+            fi
+        else
+            log "WARN" "unattended-upgrade command not found; using apt-get --only-upgrade..."
+            if [ "$DRY_RUN" = true ]; then
+                apt-get -s --only-upgrade upgrade -y 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+            else
+                DEBIAN_FRONTEND=noninteractive apt-get --only-upgrade upgrade -y -q \
+                    -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+            fi
+        fi
+    else
+        # Full upgrade (all packages)
+        if [ "$DRY_RUN" = true ]; then
+            log "INFO" "Simulating full system upgrade via apt-get -s dist-upgrade..."
+            apt-get -s dist-upgrade 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+        else
+            log "INFO" "Applying full system upgrade via apt-get dist-upgrade..."
+            DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y -q \
+                -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
+        fi
+    fi
+elif [ "$BACKEND" = "dnf5" ]; then
     log "INFO" "Using backend: DNF5 automatic (refresh: ${REFRESH_METADATA})"
     if [ "$DRY_RUN" = true ]; then
         # shellcheck disable=SC2086
@@ -186,7 +251,7 @@ if command -v dnf5 &>/dev/null && dnf5 automatic --help &>/dev/null; then
         # shellcheck disable=SC2086
         dnf5 $REFRESH_OPT automatic --installupdates 2>&1 | tee -a "$LOG_FILE" || STATUS=$?
     fi
-elif command -v dnf-automatic &>/dev/null; then
+elif [ "$BACKEND" = "dnf4" ]; then
     log "INFO" "Using backend: DNF4 dnf-automatic (refresh: ${REFRESH_METADATA})"
     if [ "$REFRESH_METADATA" = "true" ]; then
         log "INFO" "Refreshing DNF4 repository metadata cache..."
@@ -286,7 +351,11 @@ check_shutdown_inhibitors() {
 if [ "$DRY_RUN" = false ]; then
     REBOOT_NEEDED=false
     if [ "$REBOOT" = "when-needed" ]; then
-        if command -v dnf5 &>/dev/null && dnf5 needs-restarting --help &>/dev/null; then
+        if [ "$BACKEND" = "apt" ]; then
+            if [ -f /run/reboot-required ] || [ -f /var/run/reboot-required ]; then
+                REBOOT_NEEDED=true
+            fi
+        elif command -v dnf5 &>/dev/null && dnf5 needs-restarting --help &>/dev/null; then
             if ! dnf5 needs-restarting -r &>/dev/null; then
                 REBOOT_NEEDED=true
             fi

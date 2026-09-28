@@ -1,0 +1,27 @@
+Source: auto-updates
+Section: admin
+Priority: optional
+Maintainer: Steve Rock Wheelhouser <steve@wheelhouser.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://github.com/steve-rock-wheelhouser/auto-updates
+Rules-Requires-Root: no
+
+Package: auto-updates
+Architecture: all
+Depends: ${misc:Depends},
+         unattended-upgrades,
+         systemd,
+         bash (>= 4.0),
+         coreutils,
+         sed,
+         gawk,
+         logrotate
+Description: Automated system updater for Debian, Ubuntu, Fedora, and RHEL
+ auto-updates is a CLI utility and systemd service that configures and
+ manages automated updates out-of-the-box.
+ .
+ By default, it enables daily security updates at 03:30 AM local time.
+ It supports flexible update modes (security, all, or weekly-all),
+ configurable reboot policies with compiler/build safety deferral guards,
+ and real-time system status inspection.

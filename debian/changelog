@@ -1,0 +1,7 @@
+auto-updates (1.1.0-1) unstable; urgency=medium
+
+  * Added native Debian and Ubuntu (.deb) support.
+  * Added APT backend and unattended-upgrades integration.
+  * Added /run/reboot-required status check for Debian/Ubuntu hosts.
+
+ -- Steve Rock Wheelhouser <steve@wheelhouser.com>  Mon, 28 Sep 2026 12:50:00 -0400

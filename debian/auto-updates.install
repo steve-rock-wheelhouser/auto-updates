@@ -1,0 +1,9 @@
+bin/auto-updates usr/bin/
+libexec/auto-updates-runner usr/libexec/
+systemd/auto-updates.service lib/systemd/system/
+systemd/auto-updates.timer lib/systemd/system/
+config/auto-updates.conf etc/auto-updates/
+config/auto-updates.logrotate etc/logrotate.d/
+completions/auto-updates.bash usr/share/bash-completion/completions/
+man/auto-updates.8 usr/share/man/man8/
+man/auto-updates.conf.5 usr/share/man/man5/

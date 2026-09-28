@@ -33,6 +33,7 @@
 # 1.0.7 - Added logrotate integration, %check validation section,
 #         and achieved strict rpmlint compliance
 # 1.0.8 - Moved main entry point to src/main.sh per Wheelhouser LLC project standards
+# 1.1.0 - Added native Debian/Ubuntu (.deb) packaging and APT backend support
 # ==============================================================================
 
 set -euo pipefail
@@ -44,26 +45,30 @@ cd "$PROJECT_ROOT"
 show_menu() {
     clear
     echo "================================================================================"
-    echo "                Auto-Updates Management & Build Utility (v1.0.8)                "
+    echo "                Auto-Updates Management & Build Utility (v1.1.0)                "
     echo "================================================================================"
-    echo " 1) Build & Sign RPM Package       (Creates dist/auto-updates-1.0.8-1.noarch.rpm)"
-    echo " 2) Install/Upgrade RPM Package    (sudo dnf upgrade dist/auto-updates-*.rpm)"
-    echo " 3) Run Local Standalone Install   (Directly installs CLI & systemd units)"
-    echo " 4) Check Auto-Updates Status      (auto-updates status)"
-    echo " 5) Set Mode: Security Only        (sudo auto-updates mode security)"
-    echo " 6) Set Mode: Daily All Updates    (sudo auto-updates mode all)"
-    echo " 7) Set Mode: Weekly All Updates   (sudo auto-updates mode weekly-all)"
-    echo " 8) Configure Reboot Policy        (never / when-needed / when-changed)"
-    echo " 9) Test Update Run (Dry Run)      (auto-updates check)"
-    echo " 10) Exit"
+    echo " 1) Build & Sign RPM Package       (Creates dist/auto-updates-1.1.0-1.noarch.rpm)"
+    echo " 2) Build Debian (.deb) Package    (Creates dist/auto-updates_1.1.0-1_all.deb)"
+    echo " 3) Install/Upgrade RPM Package    (sudo dnf upgrade dist/auto-updates-*.rpm)"
+    echo " 4) Run Local Standalone Install   (Directly installs CLI & systemd units)"
+    echo " 5) Check Auto-Updates Status      (auto-updates status)"
+    echo " 6) Set Mode: Security Only        (sudo auto-updates mode security)"
+    echo " 7) Set Mode: Daily All Updates    (sudo auto-updates mode all)"
+    echo " 8) Set Mode: Weekly All Updates   (sudo auto-updates mode weekly-all)"
+    echo " 9) Configure Reboot Policy        (never / when-needed / when-changed)"
+    echo " 10) Test Update Run (Dry Run)     (auto-updates check)"
+    echo " 11) Exit"
     echo "================================================================================"
-    read -rp "Please select an option [1-10]: " choice
+    read -rp "Please select an option [1-11]: " choice
 
     case "$choice" in
         1)
             ./build_rpm.sh
             ;;
         2)
+            ./build_deb.sh
+            ;;
+        3)
             RPM_FILE=$(find dist -name "auto-updates-*.noarch.rpm" | head -n 1)
             if [ -n "$RPM_FILE" ]; then
                 echo "Installing $RPM_FILE..."
@@ -72,38 +77,38 @@ show_menu() {
                 echo "Error: No built RPM found in dist/. Please build the RPM first (option 1)."
             fi
             ;;
-        3)
+        4)
             sudo ./install_local.sh
             ;;
-        4)
+        5)
             if command -v auto-updates &>/dev/null; then
                 auto-updates status
             else
                 ./bin/auto-updates status
             fi
             ;;
-        5)
+        6)
             if command -v auto-updates &>/dev/null; then
                 sudo auto-updates mode security
             else
                 sudo ./bin/auto-updates mode security
             fi
             ;;
-        6)
+        7)
             if command -v auto-updates &>/dev/null; then
                 sudo auto-updates mode all
             else
                 sudo ./bin/auto-updates mode all
             fi
             ;;
-        7)
+        8)
             if command -v auto-updates &>/dev/null; then
                 sudo auto-updates mode weekly-all
             else
                 sudo ./bin/auto-updates mode weekly-all
             fi
             ;;
-        8)
+        9)
             echo "Select reboot policy:"
             echo "  1) never        - Never reboot automatically (recommended for workstations)"
             echo "  2) when-needed  - Reboot only if kernel/core libraries require it"
@@ -121,14 +126,14 @@ show_menu() {
                 sudo ./bin/auto-updates set-reboot "$rpol"
             fi
             ;;
-        9)
+        10)
             if command -v auto-updates &>/dev/null; then
                 auto-updates check
             else
                 ./bin/auto-updates check
             fi
             ;;
-        10|q|Q)
+        11|q|Q)
             echo "Exiting."
             exit 0
             ;;

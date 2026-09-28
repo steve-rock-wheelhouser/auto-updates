@@ -1,5 +1,5 @@
 Name:           auto-updates
-Version:        1.0.8
+Version:        1.1.0
 Release:        1%{?dist}
 Summary:        CLI and automated system updater for Fedora, Rocky Linux, and AlmaLinux
 
@@ -152,6 +152,12 @@ systemctl daemon-reload 2>/dev/null || true
 %ghost %attr(0640, root, root) %{_localstatedir}/log/auto-updates.log
 
 %changelog
+* Mon Sep 28 2026 Steve Rock Wheelhouser <steve@wheelhouser.com> - 1.1.0-1
+- Added native multi-distribution support for Debian and Ubuntu systems.
+- Implemented APT backend integration with unattended-upgrades.
+- Added native Debian/Ubuntu reboot status detection (/run/reboot-required).
+- Added build_deb.sh automated Debian packaging pipeline.
+
 * Mon Sep 28 2026 Steve Rock Wheelhouser <steve@wheelhouser.com> - 1.0.8-1
 - Moved project management entry point to src/main.sh per Wheelhouser LLC project standards.
 - Added AGENTS.md documenting mandatory version bump and changelog policies.

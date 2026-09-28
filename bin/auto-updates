@@ -2,7 +2,7 @@
 # ==============================================================================
 # auto-updates
 # CLI management utility for automated package updates.
-# Supports Fedora, Rocky Linux, AlmaLinux, RHEL, and CentOS Stream.
+# Supports Fedora, Rocky Linux, AlmaLinux, RHEL, CentOS Stream, Debian, and Ubuntu.
 #
 # Copyright (C) 2026 Steve Rock Wheelhouser <steve@wheelhouser.com>
 #
@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-VERSION="1.0.8"
+VERSION="1.1.0"
 CONF_FILE="/etc/auto-updates/auto-updates.conf"
 DNF_AUTO_CONF="/etc/dnf/automatic.conf"
 RUNNER_BIN="/usr/libexec/auto-updates-runner"
@@ -193,12 +193,27 @@ cmd_status() {
 
     # Backend detection
     local backend="Unknown"
-    if command -v dnf5 &>/dev/null && dnf5 automatic --help &>/dev/null; then
+    local os_type="rpm"
+    if [ -f /etc/os-release ]; then
+        local os_id=""
+        os_id=$(grep -E '^(ID|ID_LIKE)=' /etc/os-release 2>/dev/null || true)
+        case "$os_id" in
+            *debian*|*ubuntu*)
+                os_type="deb"
+                ;;
+        esac
+    fi
+
+    if [ "$os_type" = "deb" ] || command -v apt-get &>/dev/null && ! command -v dnf &>/dev/null && ! command -v dnf5 &>/dev/null; then
+        backend="APT / Unattended-Upgrades (/usr/bin/apt-get)"
+    elif command -v dnf5 &>/dev/null && dnf5 automatic --help &>/dev/null; then
         backend="DNF5 Plugin Automatic (/usr/bin/dnf5)"
     elif command -v dnf-automatic &>/dev/null; then
         backend="DNF4 Automatic (/usr/bin/dnf-automatic)"
     elif command -v dnf &>/dev/null; then
         backend="Standard DNF CLI (/usr/bin/dnf)"
+    elif command -v apt-get &>/dev/null; then
+        backend="APT / Unattended-Upgrades (/usr/bin/apt-get)"
     fi
     printf "  ${BOLD}%-24s${RESET} : %s\n" "Update Backend" "$backend"
     local refresh_status="enabled (query mirrors on every run)"
@@ -231,10 +246,21 @@ cmd_status() {
     fi
     printf "  ${BOLD}%-24s${RESET} : %s\n" "Build Protection" "$guard_desc"
 
-    # Live reboot status (queries needs-restarting -r)
+    # Live reboot status (queries needs-restarting on RPM, or /run/reboot-required on Debian/Ubuntu)
     local reboot_status="Checking..."
     local reboot_color="$GREEN"
-    if command -v dnf5 &>/dev/null && dnf5 needs-restarting --help &>/dev/null; then
+    if [ -f /run/reboot-required ] || [ -f /var/run/reboot-required ]; then
+        local pkgs=""
+        if [ -f /run/reboot-required.pkgs ]; then
+            pkgs=$(head -n 5 /run/reboot-required.pkgs 2>/dev/null | tr '\n' ' ' | sed 's/ $//')
+        fi
+        reboot_status="REBOOT REQUIRED"
+        [ -n "$pkgs" ] && reboot_status+=" (Packages: $pkgs)"
+        reboot_color="$RED"
+    elif [ "$os_type" = "deb" ]; then
+        reboot_status="Clean (No reboot required)"
+        reboot_color="$GREEN"
+    elif command -v dnf5 &>/dev/null && dnf5 needs-restarting --help &>/dev/null; then
         if dnf5 --cacheonly needs-restarting -r &>/dev/null; then
             reboot_status="Clean (No reboot required)"
             reboot_color="$GREEN"
@@ -251,7 +277,7 @@ cmd_status() {
             reboot_color="$RED"
         fi
     else
-        reboot_status="Unknown (needs-restarting tool not found)"
+        reboot_status="Unknown (reboot status indicator not found)"
         reboot_color="$YELLOW"
     fi
     printf "  ${BOLD}%-24s${RESET} : ${reboot_color}%s${RESET}\n" "System Reboot Status" "$reboot_status"
@@ -361,7 +387,9 @@ cmd_check() {
         require_root "check"
         ./libexec/auto-updates-runner --dry-run
     else
-        if command -v dnf5 &>/dev/null; then
+        if command -v apt-get &>/dev/null && ! command -v dnf &>/dev/null && ! command -v dnf5 &>/dev/null; then
+            apt-get -s dist-upgrade || true
+        elif command -v dnf5 &>/dev/null; then
             dnf5 --refresh check-upgrade --security || true
         else
             dnf --refresh check-upgrade --security || true

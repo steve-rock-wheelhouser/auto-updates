@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    remove|purge)
+        systemctl disable --now auto-updates.timer 2>/dev/null || true
+        systemctl stop auto-updates.service 2>/dev/null || true
+        ;;
+esac
+
+exit 0

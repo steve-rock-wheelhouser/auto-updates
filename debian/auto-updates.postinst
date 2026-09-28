@@ -1,0 +1,41 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        # Create log directory and files
+        mkdir -p /var/log/auto-updates
+        touch /var/log/auto-updates/auto-updates.log
+        chmod 0755 /var/log/auto-updates
+        chmod 0640 /var/log/auto-updates/auto-updates.log
+        ln -sfn auto-updates/auto-updates.log /var/log/auto-updates.log 2>/dev/null || true
+
+        # Ensure base configuration exists
+        mkdir -p /etc/auto-updates
+
+        # Disable default apt periodic timers to prevent duplicate runs
+        systemctl disable --now apt-daily.timer 2>/dev/null || true
+        systemctl disable --now apt-daily-upgrade.timer 2>/dev/null || true
+
+        # Reload systemd and enable/start auto-updates timer
+        systemctl daemon-reload 2>/dev/null || true
+        systemctl enable --now auto-updates.timer 2>/dev/null || true
+
+        echo "================================================================================"
+        echo " [Auto-Updates] Installed and configured successfully!"
+        echo " - Default Mode: Security updates only"
+        echo " - Schedule: Every day at 03:30 AM (local time)"
+        echo " - Timer: auto-updates.timer is enabled and active"
+        echo ""
+        echo " To enable daily full updates (all packages):"
+        echo "   sudo auto-updates set-mode all"
+        echo " To enable hybrid weekly all updates (daily security + weekly full):"
+        echo "   sudo auto-updates set-mode weekly-all"
+        echo ""
+        echo " To check status:"
+        echo "   auto-updates status"
+        echo "================================================================================"
+        ;;
+esac
+
+exit 0

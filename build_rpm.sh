@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 NAME="auto-updates"
-VERSION="1.0.8"
+VERSION="1.1.0"
 RELEASE="1"
 TARBALL="${NAME}-${VERSION}.tar.gz"
 
@@ -61,9 +61,15 @@ cp LICENSE "$STAGE_DIR/"
 tar -czf "${TOPDIR}/SOURCES/${TARBALL}" -C "$TEMP_SOURCE_DIR" "${NAME}-${VERSION}"
 cp auto-updates.spec "${TOPDIR}/SPECS/"
 
-echo "Running rpmbuild..."
+echo "Running rpmbuild (Fedora)..."
 rpmbuild -ba \
     --define "_topdir ${TOPDIR}" \
+    "${TOPDIR}/SPECS/auto-updates.spec"
+
+echo "Running rpmbuild (Enterprise Linux 10)..."
+rpmbuild -ba \
+    --define "_topdir ${TOPDIR}" \
+    --define "dist .el10" \
     "${TOPDIR}/SPECS/auto-updates.spec"
 
 # Copy resulting RPMs to dist
