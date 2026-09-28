@@ -3,7 +3,7 @@
 # build_deb.sh
 # Builds the auto-updates Debian / Ubuntu (.deb) package
 #
-# Copyright (C) 2026 Steve Rock Wheelhouser <steve@wheelhouser.com>
+# Copyright (C) 2026 Steve Rock <steve.rock@wheelhouser.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 NAME="auto-updates"
-VERSION="1.1.2"
+VERSION="1.1.3"
 RELEASE="1"
 ARCH="all"
 DEB_NAME="${NAME}_${VERSION}-${RELEASE}_${ARCH}.deb"
@@ -63,7 +63,7 @@ Section: admin
 Priority: optional
 Architecture: ${ARCH}
 Essential: no
-Maintainer: Steve Rock Wheelhouser <steve@wheelhouser.com>
+Maintainer: Steve Rock <steve.rock@wheelhouser.com>
 Installed-Size: ${INSTALLED_SIZE}
 Depends: unattended-upgrades, systemd, bash (>= 4.0), coreutils, sed, gawk, logrotate
 Homepage: https://github.com/steve-rock-wheelhouser/auto-updates

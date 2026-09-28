@@ -4,7 +4,7 @@
 # Local developer / standalone installation script for Auto-Updates
 # Installs CLI, runner, systemd units, and config directly to the current system
 #
-# Copyright (C) 2026 Steve Rock Wheelhouser <steve@wheelhouser.com>
+# Copyright (C) 2026 Steve Rock <steve.rock@wheelhouser.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

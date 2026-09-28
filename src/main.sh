@@ -3,7 +3,7 @@
 # main.sh
 # Entry point and management utility for the Auto-Updates project
 #
-# Copyright (C) 2026 Steve Rock Wheelhouser <steve@wheelhouser.com>
+# Copyright (C) 2026 Steve Rock <steve.rock@wheelhouser.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,11 +38,12 @@
 # 1.1.2 - Remediated project review findings: fixed set-mode CLI dispatch,
 #         prevented dry-run config mutation, added yum-utils dependency,
 #         standardized build output to build-linux/Output, and integrated publish.sh
+# 1.1.3 - Corrected author and maintainer email address to steve.rock@wheelhouser.com
 # ==============================================================================
 
 set -euo pipefail
 
-VERSION="1.1.2"
+VERSION="1.1.3"
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SRC_DIR}/.." && pwd)"

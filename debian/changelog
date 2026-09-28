@@ -1,3 +1,9 @@
+auto-updates (1.1.3-1) unstable; urgency=medium
+
+  * Corrected author and maintainer email address in manual pages.
+
+ -- Steve Rock <steve.rock@wheelhouser.com>  Mon, 28 Sep 2026 13:55:00 -0400
+
 auto-updates (1.1.2-1) unstable; urgency=medium
 
   * Fixed 'set-mode' CLI command dispatch in bin/auto-updates.

@@ -156,5 +156,5 @@ journalctl -u auto-updates.service -n 50 --no-pager
 
 This project is licensed under the **GNU General Public License v3 or later (GPL-3.0-or-later)** - see the [LICENSE](LICENSE) file for details.
 
-Copyright (C) 2026 Steve Rock Wheelhouser <steve@wheelhouser.com>
+Copyright (C) 2026 Steve Rock <steve.rock@wheelhouser.com>
 

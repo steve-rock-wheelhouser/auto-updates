@@ -1,10 +1,10 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: auto-updates
-Upstream-Contact: Steve Rock Wheelhouser <steve@wheelhouser.com>
+Upstream-Contact: Steve Rock <steve.rock@wheelhouser.com>
 Source: https://github.com/steve-rock-wheelhouser/auto-updates
 
 Files: *
-Copyright: 2026 Steve Rock Wheelhouser <steve@wheelhouser.com>
+Copyright: 2026 Steve Rock <steve.rock@wheelhouser.com>
 License: GPL-3.0-or-later
 
 License: GPL-3.0-or-later

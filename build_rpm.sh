@@ -3,7 +3,7 @@
 # build_rpm.sh
 # Automates building the auto-updates RPM package
 #
-# Copyright (C) 2026 Steve Rock Wheelhouser <steve@wheelhouser.com>
+# Copyright (C) 2026 Steve Rock <steve.rock@wheelhouser.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 NAME="auto-updates"
-VERSION="1.1.2"
+VERSION="1.1.3"
 RELEASE="1"
 TARBALL="${NAME}-${VERSION}.tar.gz"
 

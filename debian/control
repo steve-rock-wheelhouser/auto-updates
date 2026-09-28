@@ -1,7 +1,7 @@
 Source: auto-updates
 Section: admin
 Priority: optional
-Maintainer: Steve Rock Wheelhouser <steve@wheelhouser.com>
+Maintainer: Steve Rock <steve.rock@wheelhouser.com>
 Build-Depends: debhelper-compat (= 13)
 Standards-Version: 4.6.2
 Homepage: https://github.com/steve-rock-wheelhouser/auto-updates
