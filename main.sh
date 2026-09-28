@@ -26,6 +26,8 @@
 #         before checking and applying updates to ensure timely execution
 # 1.0.4 - Added 'set-reboot' CLI command with live reboot status detection,
 #         advisory notices, and build/session safety deferral guard
+# 1.0.5 - Aligned mode definitions with standard DNF: 'all' = daily full updates,
+#         'weekly-all' = hybrid weekly updates (with aliases)
 # ==============================================================================
 
 set -euo pipefail
@@ -36,19 +38,20 @@ cd "$SCRIPT_DIR"
 show_menu() {
     clear
     echo "================================================================================"
-    echo "                Auto-Updates Management & Build Utility (v1.0.4)                "
+    echo "                Auto-Updates Management & Build Utility (v1.0.5)                "
     echo "================================================================================"
-    echo " 1) Build & Sign RPM Package       (Creates dist/auto-updates-1.0.4-1.noarch.rpm)"
+    echo " 1) Build & Sign RPM Package       (Creates dist/auto-updates-1.0.5-1.noarch.rpm)"
     echo " 2) Install/Upgrade RPM Package    (sudo dnf upgrade dist/auto-updates-*.rpm)"
     echo " 3) Run Local Standalone Install   (Directly installs CLI & systemd units)"
     echo " 4) Check Auto-Updates Status      (auto-updates status)"
     echo " 5) Set Mode: Security Only        (sudo auto-updates mode security)"
-    echo " 6) Set Mode: All Updates          (sudo auto-updates mode all)"
-    echo " 7) Configure Reboot Policy        (never / when-needed / when-changed)"
-    echo " 8) Test Update Run (Dry Run)      (auto-updates check)"
-    echo " 9) Exit"
+    echo " 6) Set Mode: Daily All Updates    (sudo auto-updates mode all)"
+    echo " 7) Set Mode: Weekly All Updates   (sudo auto-updates mode weekly-all)"
+    echo " 8) Configure Reboot Policy        (never / when-needed / when-changed)"
+    echo " 9) Test Update Run (Dry Run)      (auto-updates check)"
+    echo " 10) Exit"
     echo "================================================================================"
-    read -rp "Please select an option [1-9]: " choice
+    read -rp "Please select an option [1-10]: " choice
 
     case "$choice" in
         1)
@@ -88,6 +91,13 @@ show_menu() {
             fi
             ;;
         7)
+            if command -v auto-updates &>/dev/null; then
+                sudo auto-updates mode weekly-all
+            else
+                sudo ./bin/auto-updates mode weekly-all
+            fi
+            ;;
+        8)
             echo "Select reboot policy:"
             echo "  1) never        - Never reboot automatically (recommended for workstations)"
             echo "  2) when-needed  - Reboot only if kernel/core libraries require it"
@@ -105,14 +115,14 @@ show_menu() {
                 sudo ./bin/auto-updates set-reboot "$rpol"
             fi
             ;;
-        8)
+        9)
             if command -v auto-updates &>/dev/null; then
                 auto-updates check
             else
                 ./bin/auto-updates check
             fi
             ;;
-        9|q|Q)
+        10|q|Q)
             echo "Exiting."
             exit 0
             ;;

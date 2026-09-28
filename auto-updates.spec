@@ -1,5 +1,5 @@
 Name:           auto-updates
-Version:        1.0.4
+Version:        1.0.5
 Release:        1%{?dist}
 Summary:        CLI and automated system updater for Fedora, Rocky Linux, and AlmaLinux
 
@@ -20,12 +20,14 @@ auto-updates is a CLI utility and systemd service that configures and manages
 dnf-automatic out-of-the-box on Fedora, Rocky Linux, AlmaLinux, and RHEL.
 
 By default, it enables daily security updates at 03:30 AM local time.
-It can be upgraded to enable all updates via the CLI, running daily security
-updates plus a weekly full update of all packages (every Sunday at 03:30 AM).
+It supports three update modes:
+- 'security': Daily security updates only.
+- 'all': Daily full updates (all packages every day, matching dnf-automatic standard).
+- 'weekly-all' (or 'all-weekly'): Daily security updates plus a weekly full update of all packages (every Sunday at 03:30 AM).
 
 Features:
 - Out-of-the-box automated security updates
-- Easy CLI toggle between security-only and security + weekly all updates
+- Flexible update modes (security-only, daily all updates, or hybrid weekly all updates)
 - Daily run at 3:30 AM in the local system timezone
 - Persistent timer ensuring missed runs on sleep/boot are executed
 - Cross-platform support for DNF4 and DNF5 (Fedora, Rocky Linux, AlmaLinux, RHEL)
@@ -99,8 +101,10 @@ echo " - Default Mode: Security updates only"
 echo " - Schedule: Every day at 03:30 AM (local time)"
 echo " - Timer: auto-updates.timer is enabled and active"
 echo ""
-echo " To enable all updates (weekly full + daily security):"
-echo "   sudo auto-updates mode all"
+echo " To enable daily full updates (all packages):"
+echo "   sudo auto-updates set-mode all"
+echo " To enable hybrid weekly all updates (daily security + weekly full):"
+echo "   sudo auto-updates set-mode weekly-all"
 echo ""
 echo " To check status:"
 echo "   auto-updates status"
@@ -128,6 +132,12 @@ systemctl daemon-reload 2>/dev/null || true
 %ghost %{_localstatedir}/log/auto-updates.log
 
 %changelog
+* Mon Sep 28 2026 Steve Rock Wheelhouser <steve@wheelhouser.com> - 1.0.5-1
+- Standardized update mode naming: 'all' now executes daily full updates (matching dnf-automatic standard).
+- Added 'weekly-all' (and 'all-weekly' alias) for the hybrid daily security + weekly full updates schedule.
+- Retained 'daily-all' as a backward-compatible alias for 'all'.
+- Updated CLI commands, bash completion, main menu, and documentation.
+
 * Mon Sep 28 2026 Steve Rock Wheelhouser <steve@wheelhouser.com> - 1.0.4-1
 - Added 'set-reboot' CLI command to configure automated reboot policy.
 - Integrated live system reboot status detection (needs-restarting) into 'auto-updates status'.

@@ -11,30 +11,41 @@
    - Scheduled to run **every day at 03:30 AM in the local system timezone**.
    - `Persistent=true` ensures that if a computer or server was turned off or sleeping at 03:30 AM, missed updates are executed as soon as the machine boots or wakes up.
 
-2. **One-Command Upgrade to All Updates (with Weekly Full Runs)**:
-   - Easily switch between security-only and all updates using the CLI:
+2. **Flexible Update Modes**:
+   - Easily switch between update modes using the CLI:
      ```bash
-     sudo auto-updates mode all
+     sudo auto-updates set-mode security    # Daily security updates only
+     sudo auto-updates set-mode all         # Daily full updates (all packages every day)
+     sudo auto-updates set-mode weekly-all  # Daily security + weekly full updates on Sunday
      ```
-   - When set to `all`:
+   - When set to `weekly-all`:
      - **Monday – Saturday**: Runs fast, daily security updates at 03:30 AM (ensuring zero-day patches are not delayed).
      - **Sunday**: Runs a full system upgrade of all packages (features, bug fixes, enhancements, and security) at 03:30 AM.
-   - You can switch back to security-only at any time:
-     ```bash
-     sudo auto-updates mode security
-     ```
+   - When set to `all`:
+     - Runs a full system upgrade of all packages every day at 03:30 AM.
+   - When set to `security`:
+     - Runs security updates only every day at 03:30 AM.
 
-3. **Cross-Distribution & Multi-DNF Support**:
+3. **Configurable Automated Reboot Policy & Build Protection**:
+   - Configure automatic reboots when updates require it:
+     ```bash
+     sudo auto-updates set-reboot when-needed  # Reboot if kernel/system libraries changed
+     sudo auto-updates set-reboot when-changed # Reboot whenever any package is updated
+     sudo auto-updates set-reboot never        # Never reboot automatically (default)
+     ```
+   - Includes **intelligent build and task protection**: if an active build or compiling process (`rpmbuild`, `mock`, `make`, `ninja`, `cargo`, `gcc`, container build) or `systemd-inhibit` lock is detected, automated reboots are safely postponed until the next cycle to protect in-flight workloads.
+
+4. **Cross-Distribution & Multi-DNF Support**:
    - Compatible with both **DNF4** (Rocky Linux 8/9, AlmaLinux 8/9, RHEL 8/9) and **DNF5** (Fedora 41+, RHEL 10, Rocky 10).
    - Automatically adapts backend invocation and eliminates conflicting default distribution timers.
 
-4. **Interactive CLI Dashboard**:
-   - Check timer state, active mode, next scheduled run, last execution status, and pending updates:
+5. **Interactive CLI Dashboard**:
+   - Check timer state, active mode, next scheduled run, live system reboot status, and pending updates:
      ```bash
      auto-updates status
      ```
 
-5. **Manual Trigger & Dry-Run Testing**:
+6. **Manual Trigger & Dry-Run Testing**:
    - Run or test updates on demand:
      ```bash
      sudo auto-updates run            # Runs according to today's schedule
@@ -49,9 +60,11 @@
 
 | Command | Description |
 | :--- | :--- |
-| `auto-updates status` (or `-s`) | Display configuration, timer status, and next scheduled run |
-| `sudo auto-updates mode security` | Set mode to daily security updates only |
-| `sudo auto-updates mode all` | Set mode to daily security + weekly full updates |
+| `auto-updates status` (or `-s`) | Display configuration, timer status, reboot status, and next scheduled run |
+| `sudo auto-updates set-mode security` | Set mode to daily security updates only |
+| `sudo auto-updates set-mode all` | Set mode to daily full updates (all packages every day) |
+| `sudo auto-updates set-mode weekly-all` | Set mode to daily security + weekly full updates |
+| `sudo auto-updates set-reboot <policy>` | Set reboot policy: `never`, `when-needed`, or `when-changed` |
 | `sudo auto-updates enable` | Enable and start the systemd timer |
 | `sudo auto-updates disable` | Stop and disable the systemd timer |
 | `sudo auto-updates run` | Trigger an immediate update run |
@@ -73,7 +86,7 @@ Configuration is stored in `/etc/auto-updates/auto-updates.conf`:
 ```ini
 # /etc/auto-updates/auto-updates.conf
 
-# Mode: 'security' (daily security only) or 'all' (daily security + weekly full)
+# Mode: 'security' (daily security only), 'all' (daily full updates), or 'weekly-all' (daily security + weekly full)
 MODE=security
 
 # Daily update execution time (24-hour local time format: HH:MM)

@@ -102,7 +102,10 @@ CURRENT_DAY="$(date +%a)"
 if [ -n "$OVERRIDE_TYPE" ]; then
     UPGRADE_TYPE="$OVERRIDE_TYPE"
     REASON="Manually forced $UPGRADE_TYPE update"
-elif [ "$MODE" = "all" ]; then
+elif [ "$MODE" = "all" ] || [ "$MODE" = "daily-all" ]; then
+    UPGRADE_TYPE="default"
+    REASON="Daily full update (all packages)"
+elif [ "$MODE" = "weekly-all" ] || [ "$MODE" = "all-weekly" ]; then
     if [ "$CURRENT_DAY" = "$WEEKLY_DAY" ]; then
         UPGRADE_TYPE="default"
         REASON="Weekly full update ($CURRENT_DAY matched WEEKLY_DAY)"
@@ -110,9 +113,6 @@ elif [ "$MODE" = "all" ]; then
         UPGRADE_TYPE="security"
         REASON="Daily security update (weekly full update scheduled on $WEEKLY_DAY)"
     fi
-elif [ "$MODE" = "daily-all" ]; then
-    UPGRADE_TYPE="default"
-    REASON="Daily full update"
 else
     UPGRADE_TYPE="security"
     REASON="Daily security update"
