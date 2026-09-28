@@ -1,3 +1,9 @@
+auto-updates (1.1.5-1) unstable; urgency=medium
+
+  * Added value proposition and global marketing strategy documentation.
+
+ -- Steve Rock <steve.rock@wheelhouser.com>  Mon, 28 Sep 2026 14:13:00 -0400
+
 auto-updates (1.1.4-1) unstable; urgency=medium
 
   * Enhanced 'set-reboot' CLI help output with verbose highlighting and updated manual pages.

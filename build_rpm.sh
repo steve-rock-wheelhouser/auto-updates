@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 NAME="auto-updates"
-VERSION="1.1.4"
+VERSION="1.1.5"
 RELEASE="1"
 TARBALL="${NAME}-${VERSION}.tar.gz"
 
