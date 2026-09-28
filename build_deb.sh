@@ -50,13 +50,30 @@ gzip -9 -n -c man/auto-updates.8 > "${STAGE_DIR}/usr/share/man/man8/auto-updates
 gzip -9 -n -c man/auto-updates.conf.5 > "${STAGE_DIR}/usr/share/man/man5/auto-updates.conf.5.gz"
 chmod 0644 "${STAGE_DIR}/usr/share/man/man8/auto-updates.8.gz" "${STAGE_DIR}/usr/share/man/man5/auto-updates.conf.5.gz"
 
-# Install DEBIAN control files
-install -p -m 0644 debian/control "${STAGE_DIR}/DEBIAN/control"
-# Update version in control file if needed
-sed -i "s|^Package:.*|Package: ${NAME}|" "${STAGE_DIR}/DEBIAN/control"
-if ! grep -q "^Version:" "${STAGE_DIR}/DEBIAN/control"; then
-    sed -i "/^Package:/a Version: ${VERSION}-${RELEASE}" "${STAGE_DIR}/DEBIAN/control"
-fi
+# Calculate installed-size in KB
+INSTALLED_SIZE=$(du -sk --exclude=DEBIAN "$STAGE_DIR" | cut -f1)
+
+# Generate binary DEBIAN control file
+cat <<EOF > "${STAGE_DIR}/DEBIAN/control"
+Package: ${NAME}
+Version: ${VERSION}-${RELEASE}
+Section: admin
+Priority: optional
+Architecture: ${ARCH}
+Essential: no
+Maintainer: Steve Rock Wheelhouser <steve@wheelhouser.com>
+Installed-Size: ${INSTALLED_SIZE}
+Depends: unattended-upgrades, systemd, bash (>= 4.0), coreutils, sed, gawk, logrotate
+Homepage: https://github.com/steve-rock-wheelhouser/auto-updates
+Description: Automated system updater for Debian, Ubuntu, Fedora, and RHEL
+ auto-updates is a CLI utility and systemd service that configures and
+ manages automated updates out-of-the-box.
+ .
+ By default, it enables daily security updates at 03:30 AM local time.
+ It supports flexible update modes (security, all, or weekly-all),
+ configurable reboot policies with compiler/build safety deferral guards,
+ and real-time system status inspection.
+EOF
 
 install -p -m 0755 debian/auto-updates.postinst "${STAGE_DIR}/DEBIAN/postinst"
 install -p -m 0755 debian/auto-updates.prerm "${STAGE_DIR}/DEBIAN/prerm"
@@ -66,10 +83,6 @@ cat <<EOF > "${STAGE_DIR}/DEBIAN/conffiles"
 /etc/auto-updates/auto-updates.conf
 /etc/logrotate.d/auto-updates
 EOF
-
-# Calculate installed-size in KB
-INSTALLED_SIZE=$(du -sk --exclude=DEBIAN "$STAGE_DIR" | cut -f1)
-sed -i "/^Version:/a Installed-Size: ${INSTALLED_SIZE}" "${STAGE_DIR}/DEBIAN/control"
 
 # Generate md5sums
 (
