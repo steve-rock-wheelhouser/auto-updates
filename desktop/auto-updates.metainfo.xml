@@ -53,6 +53,11 @@
     <binary>auto-updates</binary>
   </provides>
   <releases>
+    <release version="1.3.0" date="2026-09-29">
+      <description>
+        <p>Two-tier interactive TUI workflow: initial status dashboard with [c] prompt to enter configuration menu or Enter to close.</p>
+      </description>
+    </release>
     <release version="1.2.4" date="2026-09-29">
       <description>
         <p>Anti-reboot-loop safeguards: 15-minute system uptime safety floor, automated reboot rate limiter (1-hour cooldown), on-boot execution elimination, and package modification verification for when-changed policy.</p>

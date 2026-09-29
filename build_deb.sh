@@ -26,7 +26,7 @@ SPEC_FILE="${PROJECT_ROOT}/auto-updates.spec"
 if [ -f "$SPEC_FILE" ]; then
     VERSION=$(grep -E '^Version:' "$SPEC_FILE" | awk '{print $2}' | tr -d ' ')
 else
-    VERSION="1.2.4"
+    VERSION="1.3.0"
 fi
 RELEASE="1"
 ARCH="all"
