@@ -1,3 +1,10 @@
+auto-updates (1.3.1-1) unstable; urgency=medium
+
+  * End-to-end verification release for Orchestra packaging, staging, and fleet QA.
+  * Initial TUI dashboard prompt [c] to configure or Enter to close.
+
+ -- Steve Rock <steve.rock@wheelhouser.com>  Tue, 29 Sep 2026 11:00:00 -0400
+
 auto-updates (1.3.0-1) unstable; urgency=medium
 
   * Two-tier interactive TUI workflow: initial status dashboard with [c] prompt to enter configuration menu or Enter to close.

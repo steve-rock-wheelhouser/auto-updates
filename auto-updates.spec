@@ -1,5 +1,5 @@
 Name:           auto-updates
-Version:        1.3.0
+Version:        1.3.1
 Release:        1%{?dist}
 Summary:        CLI and automated system updater for Fedora, Rocky Linux, and AlmaLinux
 
@@ -170,6 +170,10 @@ systemctl daemon-reload 2>/dev/null || true
 %ghost %attr(0640, root, root) %{_localstatedir}/log/auto-updates.log
 
 %changelog
+* Tue Sep 29 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.3.1-1
+- End-to-end verification release for Orchestra packaging, staging, and fleet QA.
+- Initial TUI dashboard prompt [c] to configure or Enter to close.
+
 * Tue Sep 29 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.3.0-1
 - Two-tier interactive TUI workflow: initial status dashboard with [c] prompt to enter configuration menu or Enter to close.
 - Enhanced quick exit UX for desktop application launcher and terminal status inspections.
