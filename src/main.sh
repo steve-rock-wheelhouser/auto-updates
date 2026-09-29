@@ -47,11 +47,13 @@
 # 1.2.0 - Added version display to status header and quick CLI command reference prompts
 #         (auto-updates -h, man auto-updates, auto-updates run) for desktop launcher and interactive terminal sessions
 # 1.2.1 - Expanded status Quick CLI reference with set-reboot options (never|when-needed|when-changed), set-time, and set-day
+# 1.2.2 - Add configurable REBOOT_DELAY with immediate systemctl reboot (delay 0)
+# 1.2.3 - Add interactive TUI configuration menu, direct desktop launcher, and hypervisor manual
 # ==============================================================================
 
 set -euo pipefail
 
-VERSION="1.2.1"
+VERSION="1.2.3"
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SRC_DIR}/.." && pwd)"
