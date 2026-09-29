@@ -1,6 +1,6 @@
-# band-scheduler Bug Reports & QA Ticketing System
+# auto-updates Bug Reports & QA Ticketing System
 
-This directory maintains the file-based QA and issue tracking history for **band-scheduler**.
+This directory maintains the file-based QA and issue tracking history for **auto-updates**.
 Tickets are created automatically by the Wheelhouser Automated Fleet QA Harness
 (`orchestra/scripts/test_candidate_fleet.sh`), via the Staging Hub (`staging.wheelhouser.com`),
 or manually filed by maintainers.
@@ -39,7 +39,7 @@ ticket_id: "BUG-YYYYMMDD_HHMMSS"
 type: "installation"          # installation | run-time | marketing
 status: "open"                # open | in-progress | resolved | closed
 severity: "high"              # low | medium | high | critical
-project: "band-scheduler"
+project: "auto-updates"
 package: "package-filename.rpm"
 os: "linux"                   # linux | windows | macos
 arch: "arm64"                 # arm64 | x86_64 (primarily macOS / Windows)
@@ -60,7 +60,7 @@ Manage tickets using the central Orchestra CLI tool:
 orchestra/scripts/manage_bugs.py list --status open
 
 # List bugs for this project only
-orchestra/scripts/manage_bugs.py list --project band-scheduler
+orchestra/scripts/manage_bugs.py list --project auto-updates
 
 # Resolve / Close a bug ticket
 orchestra/scripts/manage_bugs.py close BUG-YYYYMMDD_HHMMSS --reason "Enabled EPEL 10" --resolved-by "v0.15.0-2"
