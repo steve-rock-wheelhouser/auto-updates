@@ -52,11 +52,12 @@
 # 1.2.4 - Anti-reboot-loop safeguards: uptime safety floor (900s), reboot rate limiter, package change tracking
 # 1.3.0 - Two-tier interactive TUI: initial status dashboard with [c] prompt to enter configuration menu or Enter to close
 # 1.3.1 - version update to test orchestra process
+# 1.3.2 - version update to test orchestra process
 # ==============================================================================
 
 set -euo pipefail
 
-VERSION="1.3.1"
+VERSION="1.3.2"
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SRC_DIR}/.." && pwd)"
