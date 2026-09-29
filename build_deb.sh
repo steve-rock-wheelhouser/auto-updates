@@ -23,10 +23,23 @@ cd "$PROJECT_ROOT"
 
 NAME="auto-updates"
 SPEC_FILE="${PROJECT_ROOT}/auto-updates.spec"
+MAIN_SH="${PROJECT_ROOT}/src/main.sh"
+
+SRC_VER=""
+if [ -f "$MAIN_SH" ]; then
+    SRC_VER=$(grep -E '^\s*VERSION=' "$MAIN_SH" | head -n 1 | awk -F'"' '{print $2}')
+fi
+SPEC_VER=""
 if [ -f "$SPEC_FILE" ]; then
-    VERSION=$(grep -E '^Version:' "$SPEC_FILE" | awk '{print $2}' | tr -d ' ')
+    SPEC_VER=$(grep -E '^Version:' "$SPEC_FILE" | awk '{print $2}' | tr -d ' ')
+fi
+
+if [ -n "$SRC_VER" ]; then
+    VERSION="$SRC_VER"
+elif [ -n "$SPEC_VER" ]; then
+    VERSION="$SPEC_VER"
 else
-    VERSION="1.3.1"
+    VERSION="1.3.2"
 fi
 RELEASE="1"
 ARCH="all"

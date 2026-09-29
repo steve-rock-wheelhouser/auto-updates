@@ -23,11 +23,32 @@ cd "$PROJECT_ROOT"
 
 NAME="auto-updates"
 SPEC_FILE="${PROJECT_ROOT}/auto-updates.spec"
-if [ -f "$SPEC_FILE" ]; then
-    VERSION=$(grep -E '^Version:' "$SPEC_FILE" | awk '{print $2}' | tr -d ' ')
-else
-    VERSION="1.3.1"
+MAIN_SH="${PROJECT_ROOT}/src/main.sh"
+
+SRC_VER=""
+if [ -f "$MAIN_SH" ]; then
+    SRC_VER=$(grep -E '^\s*VERSION=' "$MAIN_SH" | head -n 1 | awk -F'"' '{print $2}')
 fi
+SPEC_VER=""
+if [ -f "$SPEC_FILE" ]; then
+    SPEC_VER=$(grep -E '^Version:' "$SPEC_FILE" | awk '{print $2}' | tr -d ' ')
+fi
+
+if [ -n "$SRC_VER" ]; then
+    VERSION="$SRC_VER"
+elif [ -n "$SPEC_VER" ]; then
+    VERSION="$SPEC_VER"
+else
+    VERSION="1.3.2"
+fi
+
+if [ -f "$SPEC_FILE" ]; then
+    sed -i "s/^\(Version:[\t ]*\).*/\1${VERSION}/" "$SPEC_FILE"
+fi
+if [ -f "${PROJECT_ROOT}/bin/auto-updates" ]; then
+    sed -i "s/^\(VERSION=\"\)[^\"]*\(\"\)/\1${VERSION}\2/" "${PROJECT_ROOT}/bin/auto-updates"
+fi
+
 RELEASE="1"
 TARBALL="${NAME}-${VERSION}.tar.gz"
 
@@ -107,7 +128,31 @@ if [ -z "$LOCAL_DIST" ] || [ "$LOCAL_DIST" = ".el10" ]; then
     done
 fi
 
-# Copy resulting RPMs to standardized build-linux/Output and dist
+echo ""
+echo "================================================================================"
+echo " Signing Newly Built RPM packages with GPG..."
+echo "================================================================================"
+mapfile -t NEW_RPMS < <(find "${TOPDIR}/RPMS" "${TOPDIR}/SRPMS" -name "*.rpm" 2>/dev/null | sort -u)
+if [ ${#NEW_RPMS[@]} -gt 0 ]; then
+    rpmsign --addsign "${NEW_RPMS[@]}"
+
+    echo ""
+    echo "================================================================================"
+    echo " Verifying GPG Signatures (Strict Security Mode)..."
+    echo "================================================================================"
+    for rpm_pkg in "${NEW_RPMS[@]}"; do
+        [ -f "$rpm_pkg" ] || continue
+        echo "    Checking: $(basename "$rpm_pkg")"
+        if ! rpm -Kv "$rpm_pkg" | grep -qiE "Header.*Signature.*OK"; then
+            echo "FATAL: Security verification failed for $rpm_pkg!" >&2
+            rpm -Kv "$rpm_pkg" >&2
+            exit 1
+        fi
+    done
+    echo "    [PASS] All package cryptographic signatures verified successfully."
+fi
+
+# Copy resulting verified RPMs to standardized build-linux/Output and dist
 for rpm_file in $(find "${TOPDIR}/RPMS" -name "*.rpm"); do
     rpm_base=$(basename "$rpm_file")
     cp -v "$rpm_file" "${PROJECT_ROOT}/dist/"
@@ -122,28 +167,6 @@ for rpm_file in $(find "${TOPDIR}/RPMS" -name "*.rpm"); do
 done
 
 cp -v "${TOPDIR}/SRPMS"/*.src.rpm "${PROJECT_ROOT}/dist/" 2>/dev/null || true
-
-echo ""
-echo "================================================================================"
-echo " Signing RPM packages with GPG..."
-echo "================================================================================"
-mapfile -t ALL_RPMS < <(find "${PROJECT_ROOT}/build-linux/Output" "${PROJECT_ROOT}/dist" -name "*.rpm" | sort -u)
-rpmsign --addsign "${ALL_RPMS[@]}"
-
-echo ""
-echo "================================================================================"
-echo " Verifying GPG Signatures (Strict Security Mode)..."
-echo "================================================================================"
-for rpm_pkg in "${ALL_RPMS[@]}"; do
-    [ -f "$rpm_pkg" ] || continue
-    echo "    Checking: $(basename "$rpm_pkg")"
-    if ! rpm -Kv "$rpm_pkg" | grep -qiE "Header.*Signature.*OK"; then
-        echo "FATAL: Security verification failed for $rpm_pkg!" >&2
-        rpm -Kv "$rpm_pkg" >&2
-        exit 1
-    fi
-done
-echo "    [PASS] All package cryptographic signatures verified successfully."
 
 echo ""
 echo "================================================================================"
