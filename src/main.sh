@@ -49,11 +49,12 @@
 # 1.2.1 - Expanded status Quick CLI reference with set-reboot options (never|when-needed|when-changed), set-time, and set-day
 # 1.2.2 - Add configurable REBOOT_DELAY with immediate systemctl reboot (delay 0)
 # 1.2.3 - Add interactive TUI configuration menu, direct desktop launcher, and hypervisor manual
+# 1.2.4 - Anti-reboot-loop safeguards: uptime safety floor (900s), reboot rate limiter, package change tracking
 # ==============================================================================
 
 set -euo pipefail
 
-VERSION="1.2.3"
+VERSION="1.2.4"
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SRC_DIR}/.." && pwd)"

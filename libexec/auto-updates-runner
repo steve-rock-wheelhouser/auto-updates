@@ -211,6 +211,14 @@ fi
 EXEC_START=$(date +%s)
 STATUS=0
 
+# Capture package state before transaction to detect whether packages actually changed
+PKG_STATE_BEFORE=""
+if command -v rpm &>/dev/null; then
+    PKG_STATE_BEFORE=$(rpm -qa --last 2>/dev/null | head -n 1 || true)
+elif [ -f /var/log/dpkg.log ]; then
+    PKG_STATE_BEFORE=$(tail -n 1 /var/log/dpkg.log 2>/dev/null || true)
+fi
+
 REFRESH_OPT=""
 if [ "$REFRESH_METADATA" = "true" ]; then
     REFRESH_OPT="--refresh"
@@ -320,6 +328,21 @@ else
     exit "$STATUS"
 fi
 
+PKG_STATE_AFTER=""
+PACKAGES_MODIFIED=false
+if command -v rpm &>/dev/null; then
+    PKG_STATE_AFTER=$(rpm -qa --last 2>/dev/null | head -n 1 || true)
+elif [ -f /var/log/dpkg.log ]; then
+    PKG_STATE_AFTER=$(tail -n 1 /var/log/dpkg.log 2>/dev/null || true)
+fi
+
+if [ -n "$PKG_STATE_BEFORE" ] && [ -n "$PKG_STATE_AFTER" ] && [ "$PKG_STATE_BEFORE" != "$PKG_STATE_AFTER" ]; then
+    PACKAGES_MODIFIED=true
+    log "INFO" "Package transaction completed: system packages were updated."
+else
+    log "INFO" "Package transaction completed: no package changes detected on system."
+fi
+
 # Check for active build/compilation processes
 check_active_builds() {
     local build_procs=(
@@ -394,11 +417,34 @@ if [ "$DRY_RUN" = false ]; then
             log "WARN" "Reboot policy is 'when-needed' but 'needs-restarting' was not found. Please install yum-utils."
         fi
     elif [ "$REBOOT" = "when-changed" ]; then
-        # Check if packages were updated in this transaction
-        REBOOT_NEEDED=true
+        if [ "$PACKAGES_MODIFIED" = true ]; then
+            REBOOT_NEEDED=true
+        else
+            log "INFO" "Reboot policy is 'when-changed' but no packages were modified; reboot not required."
+            REBOOT_NEEDED=false
+        fi
     fi
 
     if [ "$REBOOT_NEEDED" = true ]; then
+        # Safety Floor 1: Never trigger automated reboot if system uptime is under 15 minutes (900 seconds)
+        UPTIME_SEC=$(awk '{print int($1)}' /proc/uptime 2>/dev/null || echo 0)
+        if [ "$UPTIME_SEC" -lt 900 ]; then
+            log "WARN" "Automated reboot skipped: System uptime is only ${UPTIME_SEC}s (safety floor: 900s). Preventing boot-time reboot loop."
+            exit 0
+        fi
+
+        # Safety Floor 2: Rate-limit automated reboots (cooldown period of 1 hour / 3600 seconds)
+        REBOOT_STAMP="/var/run/auto-updates-reboot.stamp"
+        if [ -f "$REBOOT_STAMP" ]; then
+            LAST_REBOOT_TIME=$(stat -c %Y "$REBOOT_STAMP" 2>/dev/null || echo 0)
+            NOW_TIME=$(date +%s)
+            ELAPSED=$(( NOW_TIME - LAST_REBOOT_TIME ))
+            if [ "$ELAPSED" -lt 3600 ]; then
+                log "WARN" "Automated reboot skipped: System was rebooted $ELAPSED seconds ago (cooldown: 3600s)."
+                exit 0
+            fi
+        fi
+
         if [ "$DEFER_REBOOT_IF_BUSY" = "true" ]; then
             active_builds=""
             if active_builds=$(check_active_builds); then
@@ -414,6 +460,10 @@ if [ "$DRY_RUN" = false ]; then
                 exit 0
             fi
         fi
+
+        # Record reboot timestamp before rebooting
+        mkdir -p "$(dirname "$REBOOT_STAMP")" 2>/dev/null || true
+        touch "$REBOOT_STAMP" 2>/dev/null || true
 
         if [ "${REBOOT_DELAY:-0}" -gt 0 ] 2>/dev/null; then
             log "WARN" "System reboot required according to policy ($REBOOT). Scheduling reboot in ${REBOOT_DELAY} minute(s)..."

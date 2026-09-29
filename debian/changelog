@@ -1,3 +1,14 @@
+auto-updates (1.2.4-1) unstable; urgency=medium
+
+  * CRITICAL: Add anti-reboot-loop safeguards preventing boot-time reboot cycles.
+  * Add 15-minute system uptime safety floor preventing reboots shortly after system power-on.
+  * Add 1-hour automated reboot cooldown rate limiter.
+  * Remove WantedBy=multi-user.target from auto-updates.service to prevent boot execution.
+  * Set Persistent=false on auto-updates.timer to prevent missed runs firing on boot.
+  * Fix 'when-changed' reboot policy to check actual package modifications rather than unconditional reboot.
+
+ -- Steve Rock <steve.rock@wheelhouser.com>  Tue, 29 Sep 2026 06:30:00 -0400
+
 auto-updates (1.2.3-1) unstable; urgency=medium
 
   * Add full interactive Terminal User Interface (TUI) configuration menu ('auto-updates tui' / '-i').

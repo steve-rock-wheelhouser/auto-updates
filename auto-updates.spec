@@ -1,5 +1,5 @@
 Name:           auto-updates
-Version:        1.2.3
+Version:        1.2.4
 Release:        1%{?dist}
 Summary:        CLI and automated system updater for Fedora, Rocky Linux, and AlmaLinux
 
@@ -120,7 +120,9 @@ systemctl disable --now dnf-automatic-install.timer 2>/dev/null || true
 systemctl disable --now dnf5-automatic.timer 2>/dev/null || true
 
 # Reload systemd and enable/start auto-updates timer
+# Explicitly disable auto-updates.service if accidentally enabled as an on-boot service
 systemctl daemon-reload 2>/dev/null || true
+systemctl disable auto-updates.service 2>/dev/null || true
 systemctl enable --now auto-updates.timer 2>/dev/null || true
 
 echo "================================================================================"
@@ -168,6 +170,14 @@ systemctl daemon-reload 2>/dev/null || true
 %ghost %attr(0640, root, root) %{_localstatedir}/log/auto-updates.log
 
 %changelog
+* Tue Sep 29 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.2.4-1
+- CRITICAL: Add anti-reboot-loop safeguards preventing boot-time reboot cycles.
+- Add 15-minute system uptime safety floor preventing reboots shortly after system power-on.
+- Add 1-hour automated reboot cooldown rate limiter.
+- Remove WantedBy=multi-user.target from auto-updates.service to prevent boot execution.
+- Set Persistent=false on auto-updates.timer to prevent missed runs firing on boot.
+- Fix 'when-changed' reboot policy to check actual package modifications rather than unconditional reboot.
+
 * Tue Sep 29 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.2.3-1
 - Add full interactive Terminal User Interface (TUI) configuration menu ('auto-updates tui' / '-i').
 - Update desktop application launcher to launch interactive TUI menu directly (Exec=auto-updates tui).

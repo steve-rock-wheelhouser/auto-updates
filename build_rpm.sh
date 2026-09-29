@@ -22,7 +22,12 @@ fi
 cd "$PROJECT_ROOT"
 
 NAME="auto-updates"
-VERSION="1.2.3"
+SPEC_FILE="${PROJECT_ROOT}/auto-updates.spec"
+if [ -f "$SPEC_FILE" ]; then
+    VERSION=$(grep -E '^Version:' "$SPEC_FILE" | awk '{print $2}' | tr -d ' ')
+else
+    VERSION="1.2.4"
+fi
 RELEASE="1"
 TARBALL="${NAME}-${VERSION}.tar.gz"
 

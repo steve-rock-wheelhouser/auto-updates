@@ -53,6 +53,11 @@
     <binary>auto-updates</binary>
   </provides>
   <releases>
+    <release version="1.2.4" date="2026-09-29">
+      <description>
+        <p>Anti-reboot-loop safeguards: 15-minute system uptime safety floor, automated reboot rate limiter (1-hour cooldown), on-boot execution elimination, and package modification verification for when-changed policy.</p>
+      </description>
+    </release>
     <release version="1.2.3" date="2026-09-29">
       <description>
         <p>Add full interactive Terminal User Interface (TUI) menu dashboard, direct desktop launcher integration, set-build-protection command, and comprehensive hypervisor architecture documentation.</p>

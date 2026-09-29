@@ -15,4 +15,4 @@ StandardOutput=journal+console
 StandardError=journal+console
 
 [Install]
-WantedBy=multi-user.target
+# Managed exclusively via auto-updates.timer to prevent on-boot invocation
