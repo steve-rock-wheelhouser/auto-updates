@@ -101,12 +101,27 @@ RANDOM_SLEEP=10
 # Reboot policy: 'never', 'when-needed', or 'when-changed'
 REBOOT=never
 
+# Reboot delay in minutes (0 = immediate via systemctl reboot, N = delayed notice)
+REBOOT_DELAY=0
+
 # Notification emitter: 'stdio', 'motd', 'email'
 EMIT_VIA=stdio
 
 # Log file location
 LOG_FILE=/var/log/auto-updates.log
 ```
+
+---
+
+## Virtual Machine & Desktop Hypervisor Best Practices (GNOME Boxes / KVM)
+
+When running `auto-updates` inside virtual machines (e.g. GNOME Boxes, QEMU/KVM, or virt-manager):
+
+1. **Enable "Run in background"**: In GNOME Boxes, open VM **Preferences** -> **General / Resources**, and ensure **"Run in background"** is toggled **ON**. Without this, closing or minimizing the Boxes window may cause the hypervisor to pause or suspend the virtual machine.
+2. **Reboot Delay (Immediate Restart)**: Leave `REBOOT_DELAY=0` (default) or configure with `sudo auto-updates set-reboot-delay 0`. When updates require a reboot, `auto-updates` executes an immediate `systemctl reboot`. This avoids an unattended 5-minute delayed shutdown (`shutdown -r +5`) where desktop sessions or display sockets can timeout.
+3. **Host Power & Sleep**: Ensure the hypervisor host workstation does not enter automatic system sleep or suspend during the scheduled update window (`SCHEDULE_TIME`).
+4. **Libvirt Domain Policy**: Verify the VM's domain XML configuration defines `<on_reboot>restart</on_reboot>` rather than `destroy`.
+
 
 ---
 

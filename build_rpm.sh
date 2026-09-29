@@ -22,7 +22,7 @@ fi
 cd "$PROJECT_ROOT"
 
 NAME="auto-updates"
-VERSION="1.2.1"
+VERSION="1.2.2"
 RELEASE="1"
 TARBALL="${NAME}-${VERSION}.tar.gz"
 

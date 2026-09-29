@@ -26,6 +26,7 @@ SCHEDULE_TIME="03:30"
 WEEKLY_DAY="Sun"
 RANDOM_SLEEP="10"
 REBOOT="never"
+REBOOT_DELAY="0"
 EMIT_VIA="stdio"
 LOG_FILE="/var/log/auto-updates/auto-updates.log"
 REFRESH_METADATA="true"
@@ -414,8 +415,13 @@ if [ "$DRY_RUN" = false ]; then
             fi
         fi
 
-        log "WARN" "System reboot required according to policy ($REBOOT). Scheduling reboot in 5 minutes..."
-        shutdown -r +5 "System rebooting in 5 minutes to complete package updates. Run 'sudo shutdown -c' to cancel." 2>&1 | emit_log || true
+        if [ "${REBOOT_DELAY:-0}" -gt 0 ] 2>/dev/null; then
+            log "WARN" "System reboot required according to policy ($REBOOT). Scheduling reboot in ${REBOOT_DELAY} minute(s)..."
+            shutdown -r "+${REBOOT_DELAY}" "System rebooting in ${REBOOT_DELAY} minutes to complete package updates. Run 'sudo shutdown -c' to cancel." 2>&1 | emit_log || true
+        else
+            log "WARN" "System reboot required according to policy ($REBOOT). Initiating immediate reboot via systemctl reboot..."
+            systemctl reboot 2>&1 | emit_log || shutdown -r now 2>&1 | emit_log || true
+        fi
     fi
 fi
 

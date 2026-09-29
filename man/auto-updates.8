@@ -1,6 +1,6 @@
 .\" Manpage for auto-updates.
 .\" Process with: groff -man -Tascii auto-updates.8
-.TH AUTO-UPDATES 8 "28 September 2026" "auto-updates 1.2.1" "System Administration Commands"
+.TH AUTO-UPDATES 8 "29 September 2026" "auto-updates 1.2.2" "System Administration Commands"
 .SH NAME
 auto-updates \- Automated system updates manager and systemd integration
 .SH SYNOPSIS
@@ -96,6 +96,13 @@ Automatically reboots the system whenever any package update is installed (recom
 for appliance or kiosk hosts).
 .RE
 .TP
+.BR set-reboot-delay " " \fIMINUTES\fR " (alias " \fBset-delay\fR )
+Configures the delay before rebooting when a reboot policy (\fBwhen-needed\fR or
+\fBwhen-changed\fR) triggers. Setting this to \fB0\fR initiates an immediate reboot via
+\fBsystemctl reboot\fR (recommended for virtual machines, containers, and servers). Setting
+this to \fBN\fR schedules a reboot in \fBN\fR minutes using \fBshutdown -r +N\fR with
+broadcast wall notifications. Default is \fB0\fR.
+.TP
 .BR logs " [" \fIN\fR ] " (alias " \fB\-l\fR )
 Displays the last \fIN\fR lines of \fB/var/log/auto-updates.log\fR (default: 40 lines).
 .TP
@@ -121,6 +128,26 @@ System inhibitors: locks registered with \fBsystemd-inhibit\fR for shutdown or s
 .PP
 If any active build processes or inhibitors are detected, the reboot is safely deferred until
 the next scheduled update cycle, and an advisory notice is logged to \fB/var/log/auto-updates.log\fR.
+.SH VIRTUAL MACHINE AND HYPERVISOR CONSIDERATIONS
+When running \fBauto-updates\fR inside a virtual machine (e.g., GNOME Boxes, QEMU/KVM,
+virt-manager, or VirtualBox), automated reboots require specific hypervisor settings to
+ensure the VM powers back on:
+.IP \(bu 2
+\fBGNOME Boxes Background Execution\fR: In GNOME Boxes, VMs running in the background can be
+suspended or stopped when their display window is closed. Ensure \fB"Run in background"\fR is
+enabled in the virtual machine's Preferences / Resources tab.
+.IP \(bu 2
+\fBImmediate Reboot (Delay 0)\fR: Keep \fBREBOOT_DELAY=0\fR (default). A delayed reboot
+(\fBshutdown -r +5\fR) can leave an unattended guest in a session-timeout limbo state under
+desktop hypervisors. An immediate reboot via \fBsystemctl reboot\fR cleanly resets the virtual
+ACPI hardware.
+.IP \(bu 2
+\fBHost Power Management\fR: Desktop hosts configured to enter low-power sleep or suspend
+overnight will freeze guest VM execution. Ensure host sleep is inhibited or scheduled outside
+the update maintenance window (\fBSCHEDULE_TIME\fR).
+.IP \(bu 2
+\fBLibvirt Lifecycle Policy\fR: Verify that the guest domain XML specifies
+\fB<on_reboot>restart</on_reboot>\fR (not \fBdestroy\fR).
 .SH FILES
 .TP
 .B /etc/auto-updates/auto-updates.conf

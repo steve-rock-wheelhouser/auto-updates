@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-VERSION="1.2.1"
+VERSION="1.2.2"
 CONF_FILE="/etc/auto-updates/auto-updates.conf"
 DNF_AUTO_CONF="/etc/dnf/automatic.conf"
 RUNNER_BIN="/usr/libexec/auto-updates-runner"
@@ -50,6 +50,7 @@ load_config() {
     WEEKLY_DAY="Sun"
     RANDOM_SLEEP="10"
     REBOOT="never"
+    REBOOT_DELAY="0"
     EMIT_VIA="stdio"
     LOG_FILE="/var/log/auto-updates/auto-updates.log"
     REFRESH_METADATA="true"
@@ -245,6 +246,14 @@ cmd_status() {
     esac
     printf "  ${BOLD}%-24s${RESET} : ${YELLOW}%s${RESET} (%s)\n" "Reboot Policy" "$REBOOT" "$reboot_desc"
 
+    local delay_desc=""
+    if [ "${REBOOT_DELAY:-0}" -eq 0 ] 2>/dev/null; then
+        delay_desc="Immediate (systemctl reboot)"
+    else
+        delay_desc="${REBOOT_DELAY} minute(s) (shutdown -r +${REBOOT_DELAY})"
+    fi
+    printf "  ${BOLD}%-24s${RESET} : %s\n" "Reboot Delay" "$delay_desc"
+
     local guard_desc="active (defers reboot if builds/inhibitors detected)"
     if [ "${DEFER_REBOOT_IF_BUSY:-true}" = "false" ]; then
         guard_desc="disabled (reboot will not defer for builds)"
@@ -309,6 +318,7 @@ cmd_status() {
     echo -e "    ${GREEN}auto-updates run${RESET}             Trigger immediate update check & install"
     echo -e "    ${GREEN}sudo auto-updates set-mode${RESET}   security | all | weekly-all"
     echo -e "    ${GREEN}sudo auto-updates set-reboot${RESET} never | when-needed | when-changed"
+    echo -e "    ${GREEN}sudo auto-updates set-reboot-delay${RESET} Delay in mins (0 = immediate reboot via systemctl reboot)"
     echo -e "    ${GREEN}sudo auto-updates set-time${RESET}   Change daily update time (e.g. 03:30)"
     echo -e "    ${GREEN}sudo auto-updates set-day${RESET}    Change weekly update day (e.g. Sun)"
     echo -e "    ${GREEN}man auto-updates${RESET}             Read system manual page"
@@ -514,16 +524,23 @@ cmd_set_reboot() {
         echo -e "${YELLOW}${BOLD}                     IMPORTANT ADVISORY                         ${RESET}"
         echo -e "${YELLOW}${BOLD}================================================================${RESET}"
         echo -e "  Automated system reboots are now ${BOLD}ENABLED${RESET} (${new_policy})."
-        echo -e "  If updates require a reboot, the system will restart automatically"
-        echo -e "  at the end of the update window (with a 5-minute delayed notice)."
+        if [ "${REBOOT_DELAY:-0}" -eq 0 ] 2>/dev/null; then
+            echo -e "  Reboot delay is configured to ${BOLD}0 minutes (immediate systemctl reboot)${RESET}."
+        else
+            echo -e "  Reboot delay is configured to ${BOLD}${REBOOT_DELAY} minute(s)${RESET} (with delayed wall notice)."
+        fi
         echo ""
-        echo -e "  ${BOLD}Best Practices:${RESET}"
+        echo -e "  ${BOLD}Best Practices & Hypervisor / VM Notice:${RESET}"
+        echo -e "  • ${CYAN}Virtual Machines (GNOME Boxes / KVM)${RESET}: Ensure 'Run in background' is"
+        echo -e "    enabled in VM preferences, and host power-saving/sleep is disabled during"
+        echo -e "    the scheduled window. Use delay 0 (immediate) to prevent session timeouts."
         echo -e "  • ${CYAN}Workstations/Laptops${RESET}: If you leave open IDEs, tabs, or"
         echo -e "    unsaved work overnight, consider keeping policy as 'never'."
         echo -e "  • ${CYAN}Overnight Builds${RESET}: Auto-Updates includes build process protection"
         echo -e "    (rpmbuild, make, ninja, cargo), but if running custom jobs you can"
         echo -e "    temporarily disable reboots with: ${BOLD}sudo auto-updates set-reboot never${RESET}"
-        echo -e "  • ${CYAN}Cancel Pending Reboot${RESET}: If a reboot is scheduled, run: ${BOLD}sudo shutdown -c${RESET}"
+        echo -e "  • ${CYAN}Configure Delay${RESET}: Change delay with: ${BOLD}sudo auto-updates set-reboot-delay <0|mins>${RESET}"
+        echo -e "  • ${CYAN}Cancel Pending Reboot${RESET}: If a delayed reboot is scheduled, run: ${BOLD}sudo shutdown -c${RESET}"
         echo -e "${YELLOW}${BOLD}================================================================${RESET}"
     else
         echo -e "${CYAN}Automatic reboots are disabled. All reboots must be performed manually.${RESET}"
@@ -531,6 +548,30 @@ cmd_set_reboot() {
 
     echo ""
     cmd_status
+}
+
+cmd_set_reboot_delay() {
+    local new_delay="${1:-}"
+    if [ -z "$new_delay" ] || ! [[ "$new_delay" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}[ERROR] Invalid reboot delay. Please specify an integer >= 0 (in minutes).${RESET}" >&2
+        echo "  0 = Immediate reboot via systemctl reboot (recommended for VMs/servers)" >&2
+        echo "  N = Schedule reboot in N minutes via shutdown -r +N" >&2
+        exit 1
+    fi
+
+    require_root "set-reboot-delay" "$new_delay"
+    set_conf_key "REBOOT_DELAY" "$new_delay"
+
+    if [ "$new_delay" -eq 0 ]; then
+        echo -e "${GREEN}${BOLD}[SUCCESS] Reboot delay set to 0 (immediate systemctl reboot).${RESET}"
+    else
+        echo -e "${GREEN}${BOLD}[SUCCESS] Reboot delay set to ${new_delay} minute(s).${RESET}"
+    fi
+
+    load_config
+    if [ "$REBOOT" = "never" ]; then
+        echo -e "${YELLOW}[NOTE] Current reboot policy is 'never'. The delay will take effect when reboot policy is 'when-needed' or 'when-changed'.${RESET}"
+    fi
 }
 
 cmd_logs() {
@@ -576,6 +617,7 @@ ${BOLD}COMMANDS:${RESET}
                                  ${BOLD}never${RESET}        : Never reboot automatically (default/recommended for workstations)
                                  ${BOLD}when-needed${RESET}  : Reboot only if kernel or core libraries were updated
                                  ${BOLD}when-changed${RESET} : Reboot whenever any package is updated (appliance/kiosk mode)
+  ${GREEN}set-reboot-delay <minutes>${RESET}   Set delay before reboot in minutes (0 = immediate via systemctl reboot)
   ${GREEN}logs [N]${RESET}                     View the last N log lines (default: 40)
   ${GREEN}help${RESET}                         Show this help documentation
   ${GREEN}version${RESET}                      Show version information
@@ -654,6 +696,9 @@ case "$ACTION" in
         ;;
     set-reboot|reboot|--reboot)
         cmd_set_reboot "$@"
+        ;;
+    set-reboot-delay|set-delay|delay)
+        cmd_set_reboot_delay "$@"
         ;;
     logs|log|-l|--logs)
         cmd_logs "$@"

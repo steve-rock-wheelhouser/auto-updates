@@ -53,6 +53,11 @@
     <binary>auto-updates</binary>
   </provides>
   <releases>
+    <release version="1.2.2" date="2026-09-29">
+      <description>
+        <p>Support configurable REBOOT_DELAY with immediate systemctl reboot (delay 0) to prevent unattended session timeout issues on virtual machines and servers.</p>
+      </description>
+    </release>
     <release version="1.2.1" date="2026-09-28">
       <description>
         <p>Expand status dashboard Quick CLI reference with set-reboot policies (never, when-needed, when-changed), set-time, and set-day.</p>

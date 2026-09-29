@@ -1,6 +1,6 @@
 .\" Manpage for auto-updates.conf.
 .\" Process with: groff -man -Tascii auto-updates.conf.5
-.TH AUTO-UPDATES.CONF 5 "28 September 2026" "auto-updates 1.2.1" "File Formats Manual"
+.TH AUTO-UPDATES.CONF 5 "29 September 2026" "auto-updates 1.2.2" "File Formats Manual"
 .SH NAME
 auto-updates.conf \- Configuration file for the auto-updates automated package service
 .SH SYNOPSIS
@@ -57,6 +57,12 @@ Reboot only when installed packages require a restart (such as kernel or glibc u
 Reboot whenever any package has been installed or upgraded (recommended for appliance or kiosk hosts).
 .RE
 .TP
+.BR REBOOT_DELAY = \fIMINUTES\fR
+Delay in minutes before initiating a reboot when \fBREBOOT\fR is enabled. Setting this
+to \fB0\fR triggers an immediate reboot via \fBsystemctl reboot\fR (recommended for virtual
+machines and servers). Setting this to an integer \fBN\fR schedules a delayed reboot
+(\fBshutdown -r +N\fR) with a wall broadcast warning. Default is \fB0\fR.
+.TP
 .BR DEFER_REBOOT_IF_BUSY = \fI{true|false}\fR
 When set to \fBtrue\fR (default), checks whether compilation tasks (e.g., \fBrpmbuild\fR,
 \fBmake\fR, \fBcargo\fR, \fBninja\fR, \fBgcc\fR, container builds) or \fBsystemd-inhibit\fR locks
@@ -94,6 +100,7 @@ MODE=weekly-all
 SCHEDULE_TIME=03:30
 WEEKLY_DAY=Sun
 REBOOT=when-needed
+REBOOT_DELAY=0
 DEFER_REBOOT_IF_BUSY=true
 REFRESH_METADATA=true
 RANDOM_SLEEP=10
@@ -101,6 +108,17 @@ EMIT_VIA=stdio
 LOG_FILE=/var/log/auto-updates.log
 .fi
 .RE
+.SH VIRTUAL MACHINE AND HYPERVISOR CONSIDERATIONS
+When running inside a virtual machine (such as GNOME Boxes, QEMU/KVM, or virt-manager):
+.IP \(bu 2
+\fBRun in Background\fR: Ensure \fB"Run in background"\fR is enabled in GNOME Boxes preferences
+so that closing the window or minimizing does not suspend the virtual machine.
+.IP \(bu 2
+\fBReboot Delay\fR: Keep \fBREBOOT_DELAY=0\fR so that reboot is executed immediately via
+\fBsystemctl reboot\fR rather than delaying 5 minutes.
+.IP \(bu 2
+\fBHost Power Management\fR: Ensure the hypervisor host system does not enter sleep or suspend
+during the scheduled update window.
 .SH FILES
 .I /etc/auto-updates/auto-updates.conf
 .SH SEE ALSO
