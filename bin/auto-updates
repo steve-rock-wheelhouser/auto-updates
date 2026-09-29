@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-VERSION="1.2.2"
+VERSION="1.2.3"
 CONF_FILE="/etc/auto-updates/auto-updates.conf"
 DNF_AUTO_CONF="/etc/dnf/automatic.conf"
 RUNNER_BIN="/usr/libexec/auto-updates-runner"
@@ -70,6 +70,30 @@ require_root() {
             echo -e "${RED}[ERROR] This operation requires root privileges.${RESET}" >&2
             exit 1
         fi
+    fi
+}
+
+# Run a privileged action safely from within the TUI without terminating the interactive shell
+run_action() {
+    local action="$1"; shift
+    if [ "$EUID" -eq 0 ]; then
+        case "$action" in
+            set-mode) cmd_set_mode "$@" ;;
+            set-reboot) cmd_set_reboot "$@" ;;
+            set-reboot-delay) cmd_set_reboot_delay "$@" ;;
+            set-time) cmd_set_time "$@" ;;
+            set-day) cmd_set_day "$@" ;;
+            set-build-protection|set-defer-reboot) cmd_set_defer_reboot "$@" ;;
+            enable) cmd_enable "$@" ;;
+            disable) cmd_disable "$@" ;;
+            run) cmd_run "$@" ;;
+            logs) cmd_logs "$@" ;;
+            *) echo "Unknown action: $action" ;;
+        esac
+    elif command -v sudo &>/dev/null; then
+        sudo "$0" "$action" "$@"
+    else
+        echo -e "${RED}[ERROR] This operation requires root privileges.${RESET}" >&2
     fi
 }
 
@@ -324,9 +348,8 @@ cmd_status() {
     echo -e "    ${GREEN}man auto-updates${RESET}             Read system manual page"
     echo -e "${BOLD}${CYAN}================================================================${RESET}"
     if [ "${1:-}" = "--wait" ] || [ "${1:-}" = "-w" ]; then
-        echo ""
-        read -n 1 -s -r -p "Press any key to close..."
-        echo ""
+        cmd_tui
+        return 0
     fi
 }
 
@@ -574,6 +597,36 @@ cmd_set_reboot_delay() {
     fi
 }
 
+cmd_set_defer_reboot() {
+    local val="${1:-}"
+    if [ -z "$val" ]; then
+        echo -e "${RED}[ERROR] Missing argument. Usage: auto-updates set-build-protection [true|false]${RESET}" >&2
+        exit 1
+    fi
+    case "$val" in
+        true|on|enable|enabled|1)
+            val="true"
+            ;;
+        false|off|disable|disabled|0)
+            val="false"
+            ;;
+        *)
+            echo -e "${RED}[ERROR] Invalid option '$val'. Valid values: true, false.${RESET}" >&2
+            exit 1
+            ;;
+    esac
+
+    require_root "set-build-protection" "$val"
+    set_conf_key "DEFER_REBOOT_IF_BUSY" "$val"
+
+    echo -e "${GREEN}${BOLD}[SUCCESS] Build protection deferral set to: ${val}${RESET}"
+    if [ "$val" = "true" ]; then
+        echo -e "  Reboots will be deferred if compiler or build processes (rpmbuild, cargo, make) are active."
+    else
+        echo -e "  Reboots will proceed immediately regardless of background build processes."
+    fi
+}
+
 cmd_logs() {
     load_config
     local count="${1:-40}"
@@ -594,6 +647,175 @@ cmd_logs() {
     fi
 }
 
+cmd_tui() {
+    export IS_TUI=true
+    while true; do
+        clear || true
+        cmd_status
+        echo ""
+        echo -e "${BOLD}${CYAN}----------------------------------------------------------------${RESET}"
+        echo -e "${BOLD}${YELLOW}  Interactive Configuration & Actions Menu:${RESET}"
+        echo -e "    ${GREEN}[1]${RESET} Set Update Mode         (security / all / weekly-all)"
+        echo -e "    ${GREEN}[2]${RESET} Set Reboot Policy       (never / when-needed / when-changed)"
+        echo -e "    ${GREEN}[3]${RESET} Set Reboot Delay        (0 = immediate, or custom minutes)"
+        echo -e "    ${GREEN}[4]${RESET} Set Daily Update Time   (24h format, e.g. 03:30)"
+        echo -e "    ${GREEN}[5]${RESET} Set Weekly Update Day   (Sun, Mon, Tue, Wed, Thu, Fri, Sat)"
+        echo -e "    ${GREEN}[6]${RESET} Toggle Build Protection (defer reboot if compilation is active)"
+        echo -e "    ${GREEN}[7]${RESET} Run Updates Now         (immediate check and install)"
+        echo -e "    ${GREEN}[8]${RESET} Check Available Updates (dry-run inspection)"
+        echo -e "    ${GREEN}[9]${RESET} Toggle Timer State      (enable or disable systemd timer)"
+        echo -e "    ${GREEN}[0]${RESET} View Execution Logs     (recent log entries)"
+        echo -e "    ${GREEN}[R]${RESET} Refresh Status Dashboard"
+        echo -e "    ${GREEN}[Q]${RESET} Quit / Close"
+        echo -e "${BOLD}${CYAN}----------------------------------------------------------------${RESET}"
+        read -r -p "  Select an option [0-9, R, Q]: " choice || break
+
+        case "$choice" in
+            1)
+                echo ""
+                echo -e "${BOLD}Select Update Mode:${RESET}"
+                echo "  [1] security   - Daily security updates only (recommended for servers)"
+                echo "  [2] all        - Daily full updates (all packages every day)"
+                echo "  [3] weekly-all - Daily security + weekly full system upgrades (recommended for workstations)"
+                echo "  [C] Cancel"
+                read -r -p "Enter choice [1-3, C]: " m_choice
+                case "$m_choice" in
+                    1) run_action "set-mode" "security" ;;
+                    2) run_action "set-mode" "all" ;;
+                    3) run_action "set-mode" "weekly-all" ;;
+                    *) echo "Cancelled." ;;
+                esac
+                echo ""
+                read -n 1 -s -r -p "Press any key to continue..."
+                ;;
+            2)
+                echo ""
+                echo -e "${BOLD}Select Reboot Policy:${RESET}"
+                echo "  [1] never        - Never reboot automatically (recommended for workstations)"
+                echo "  [2] when-needed  - Reboot only if kernel or core libraries were updated"
+                echo "  [3] when-changed - Reboot whenever any package is updated (appliance/kiosk mode)"
+                echo "  [C] Cancel"
+                read -r -p "Enter choice [1-3, C]: " r_choice
+                case "$r_choice" in
+                    1) run_action "set-reboot" "never" ;;
+                    2) run_action "set-reboot" "when-needed" ;;
+                    3) run_action "set-reboot" "when-changed" ;;
+                    *) echo "Cancelled." ;;
+                esac
+                echo ""
+                read -n 1 -s -r -p "Press any key to continue..."
+                ;;
+            3)
+                echo ""
+                read -r -p "Enter reboot delay in minutes (0 for immediate systemctl reboot): " d_choice
+                if [ -n "$d_choice" ]; then
+                    run_action "set-reboot-delay" "$d_choice"
+                fi
+                echo ""
+                read -n 1 -s -r -p "Press any key to continue..."
+                ;;
+            4)
+                echo ""
+                read -r -p "Enter daily execution time (HH:MM in 24-hour local time, e.g. 03:30): " t_choice
+                if [ -n "$t_choice" ]; then
+                    run_action "set-time" "$t_choice"
+                fi
+                echo ""
+                read -n 1 -s -r -p "Press any key to continue..."
+                ;;
+            5)
+                echo ""
+                echo -e "${BOLD}Select Weekly Full Update Day:${RESET}"
+                echo "  [1] Sunday     [2] Monday     [3] Tuesday    [4] Wednesday"
+                echo "  [5] Thursday   [6] Friday     [7] Saturday   [C] Cancel"
+                read -r -p "Enter choice [1-7, C]: " w_choice
+                case "$w_choice" in
+                    1) run_action "set-day" "Sun" ;;
+                    2) run_action "set-day" "Mon" ;;
+                    3) run_action "set-day" "Tue" ;;
+                    4) run_action "set-day" "Wed" ;;
+                    5) run_action "set-day" "Thu" ;;
+                    6) run_action "set-day" "Fri" ;;
+                    7) run_action "set-day" "Sat" ;;
+                    *) echo "Cancelled." ;;
+                esac
+                echo ""
+                read -n 1 -s -r -p "Press any key to continue..."
+                ;;
+            6)
+                echo ""
+                load_config
+                local cur_protect="${DEFER_REBOOT_IF_BUSY:-true}"
+                if [ "$cur_protect" = "true" ]; then
+                    read -r -p "Build protection is active. Disable it? [y/N]: " tog
+                    if [[ "$tog" =~ ^[Yy]$ ]]; then
+                        run_action "set-build-protection" "false"
+                    fi
+                else
+                    read -r -p "Build protection is disabled. Enable it? [y/N]: " tog
+                    if [[ "$tog" =~ ^[Yy]$ ]]; then
+                        run_action "set-build-protection" "true"
+                    fi
+                fi
+                echo ""
+                read -n 1 -s -r -p "Press any key to continue..."
+                ;;
+            7)
+                echo ""
+                read -r -p "Trigger update run now? [y/N]: " run_confirm
+                if [[ "$run_confirm" =~ ^[Yy]$ ]]; then
+                    run_action "run"
+                else
+                    echo "Cancelled."
+                fi
+                echo ""
+                read -n 1 -s -r -p "Press any key to continue..."
+                ;;
+            8)
+                echo ""
+                echo -e "${CYAN}Checking available package updates (dry run)...${RESET}"
+                cmd_check
+                echo ""
+                read -n 1 -s -r -p "Press any key to continue..."
+                ;;
+            9)
+                echo ""
+                if systemctl is-active --quiet "$TIMER_UNIT" 2>/dev/null; then
+                    read -r -p "Timer is active. Disable it? [y/N]: " tog
+                    if [[ "$tog" =~ ^[Yy]$ ]]; then
+                        run_action "disable"
+                    fi
+                else
+                    read -r -p "Timer is inactive. Enable it? [y/N]: " tog
+                    if [[ "$tog" =~ ^[Yy]$ ]]; then
+                        run_action "enable"
+                    fi
+                fi
+                echo ""
+                read -n 1 -s -r -p "Press any key to continue..."
+                ;;
+            0)
+                echo ""
+                cmd_logs 40
+                echo ""
+                read -n 1 -s -r -p "Press any key to continue..."
+                ;;
+            r|R)
+                load_config
+                ;;
+            q|Q|exit)
+                echo ""
+                echo "Exiting Auto-Updates."
+                break
+                ;;
+            *)
+                echo -e "${RED}Invalid selection. Please choose an option from the menu.${RESET}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
 cmd_help() {
     load_config
     echo -e "${BOLD}auto-updates${RESET} - CLI and systemd automated updater (v${VERSION})
@@ -602,6 +824,7 @@ ${BOLD}USAGE:${RESET}
   auto-updates [COMMAND|OPTION]
 
 ${BOLD}COMMANDS:${RESET}
+  ${GREEN}tui${RESET}                          Launch interactive TUI configuration menu (alias: interactive, -i)
   ${GREEN}status${RESET}                       Show current configuration, timer status, and next scheduled run
   ${GREEN}set-mode <security|all|weekly-all>${RESET} Set the update mode (alias: mode):
                                  ${BOLD}security${RESET}   : Daily security updates only (default)
@@ -618,12 +841,14 @@ ${BOLD}COMMANDS:${RESET}
                                  ${BOLD}when-needed${RESET}  : Reboot only if kernel or core libraries were updated
                                  ${BOLD}when-changed${RESET} : Reboot whenever any package is updated (appliance/kiosk mode)
   ${GREEN}set-reboot-delay <minutes>${RESET}   Set delay before reboot in minutes (0 = immediate via systemctl reboot)
+  ${GREEN}set-build-protection <true|false>${RESET} Toggle automated build & compiler process reboot protection
   ${GREEN}logs [N]${RESET}                     View the last N log lines (default: 40)
   ${GREEN}help${RESET}                         Show this help documentation
   ${GREEN}version${RESET}                      Show version information
 
 ${BOLD}SHORTCUT OPTIONS:${RESET}
   -s, --status                 Alias for 'status'
+  -i, --tui                    Alias for 'tui'
   --security                   Alias for 'mode security'
   --all                        Alias for 'mode all'
   --weekly-all, --all-weekly   Alias for 'mode weekly-all'
@@ -637,6 +862,7 @@ ${BOLD}SHORTCUT OPTIONS:${RESET}
   -v, --version                Alias for 'version'
 
 ${BOLD}EXAMPLES:${RESET}
+  auto-updates tui
   auto-updates status
   auto-updates -h
   auto-updates run
@@ -645,7 +871,8 @@ ${BOLD}EXAMPLES:${RESET}
   sudo auto-updates set-time 04:00
   sudo auto-updates set-day Sun
   sudo auto-updates set-reboot when-needed
-  sudo auto-updates set-reboot never
+  sudo auto-updates set-reboot-delay 0
+  sudo auto-updates set-build-protection true
   sudo auto-updates run --security
   auto-updates logs 20"
 }
@@ -699,6 +926,12 @@ case "$ACTION" in
         ;;
     set-reboot-delay|set-delay|delay)
         cmd_set_reboot_delay "$@"
+        ;;
+    set-build-protection|set-defer-reboot|defer-reboot)
+        cmd_set_defer_reboot "$@"
+        ;;
+    tui|interactive|--tui|-i)
+        cmd_tui
         ;;
     logs|log|-l|--logs)
         cmd_logs "$@"

@@ -1,11 +1,14 @@
 .\" Manpage for auto-updates.
 .\" Process with: groff -man -Tascii auto-updates.8
-.TH AUTO-UPDATES 8 "29 September 2026" "auto-updates 1.2.2" "System Administration Commands"
+.TH AUTO-UPDATES 8 "29 September 2026" "auto-updates 1.2.3" "System Administration Commands"
 .SH NAME
 auto-updates \- Automated system updates manager and systemd integration
 .SH SYNOPSIS
 .B auto-updates
 [\fICOMMAND\fR | \fIOPTION\fR]
+.br
+.B auto-updates
+\fBtui\fR
 .br
 .B auto-updates
 \fBmode\fR \fIMODE\fR
@@ -48,6 +51,13 @@ A hybrid schedule that runs fast daily security updates from Monday through Satu
 and executes a complete system upgrade of all packages once per week on the configured
 day (default: Sunday at 03:30 AM). Recommended for workstations and development hosts.
 .SH COMMANDS
+.TP
+.B tui \fR(alias \fBinteractive\fR, \fB\-i\fR, \fB\-\-tui\fR)
+Launches an interactive Terminal User Interface (TUI) menu dashboard. Displays live system
+update status and allows the user to interactively configure the update mode, reboot policy,
+reboot delay, daily execution time, weekly full update day, toggle build process protection,
+trigger update checks and runs, and inspect recent logs directly without needing to open a
+terminal prompt or memorize command-line flags.
 .TP
 .B status \fR(alias \fB\-s\fR, \fB\-\-status\fR)
 Displays an interactive status dashboard showing the systemd timer state, configured
@@ -103,6 +113,12 @@ Configures the delay before rebooting when a reboot policy (\fBwhen-needed\fR or
 this to \fBN\fR schedules a reboot in \fBN\fR minutes using \fBshutdown -r +N\fR with
 broadcast wall notifications. Default is \fB0\fR.
 .TP
+.BR set-build-protection " " \fI{true|false}\fR " (alias " \fBset-defer-reboot\fR )
+Enables or disables compiler and build process reboot protection (\fBDEFER_REBOOT_IF_BUSY\fR).
+When set to \fBtrue\fR (default), automated reboots are postponed if active compilation tools
+(\fBrpmbuild\fR, \fBmake\fR, \fBninja\fR, \fBcargo\fR) or system inhibitor locks are detected.
+Requires root privileges.
+.TP
 .BR logs " [" \fIN\fR ] " (alias " \fB\-l\fR )
 Displays the last \fIN\fR lines of \fB/var/log/auto-updates.log\fR (default: 40 lines).
 .TP
@@ -128,19 +144,34 @@ System inhibitors: locks registered with \fBsystemd-inhibit\fR for shutdown or s
 .PP
 If any active build processes or inhibitors are detected, the reboot is safely deferred until
 the next scheduled update cycle, and an advisory notice is logged to \fB/var/log/auto-updates.log\fR.
-.SH VIRTUAL MACHINE AND HYPERVISOR CONSIDERATIONS
-When running \fBauto-updates\fR inside a virtual machine (e.g., GNOME Boxes, QEMU/KVM,
-virt-manager, or VirtualBox), automated reboots require specific hypervisor settings to
-ensure the VM powers back on:
+.SH VIRTUAL MACHINE AND HYPERVISOR ARCHITECTURES
+When running \fBauto-updates\fR inside a virtual machine, the hypervisor's execution model
+significantly affects unattended overnight reboots. Linux virtualization typically uses one
+of two distinct libvirt connection models:
+.PP
+.nf
++-------------------------+-------------------------------+-------------------------------+
+| Feature                 | GNOME Boxes (qemu:///session) | System Libvirt (qemu:///system)|
++-------------------------+-------------------------------+-------------------------------+
+| Intended Use            | Desktop user app / ISO testing| Servers, CI/CD, 24/7 nodes    |
+| Execution Context       | User session (UID 1000)       | System daemon (virtqemud/root)|
+| Tied to Desktop?        | Yes (GNOME Shell, screen lock)| No (headless system daemon)   |
+| Survives Screen Lock?   | Often no (power-saving pauses)| Yes (independent of desktop)  |
+| Host Autostart Support? | No (requires graphical login) | Native (virsh autostart)      |
+| Guest Reboot Handling   | Tied to display window/SPICE  | Handled by hypervisor daemon  |
++-------------------------+-------------------------------+-------------------------------+
+.fi
+.SS GNOME Boxes Best Practices
+For workstation development and visual testing VMs running under GNOME Boxes (\fBqemu:///session\fR):
 .IP \(bu 2
-\fBGNOME Boxes Background Execution\fR: In GNOME Boxes, VMs running in the background can be
-suspended or stopped when their display window is closed. Ensure \fB"Run in background"\fR is
-enabled in the virtual machine's Preferences / Resources tab.
+\fBRun in Background\fR: In GNOME Boxes, open VM \fBPreferences\fR -> \fBGeneral / Resources\fR,
+and ensure \fB"Run in background"\fR is toggled \fBON\fR. Without this, closing or minimizing
+the display window can pause or stop the guest when it attempts an ACPI reset.
 .IP \(bu 2
 \fBImmediate Reboot (Delay 0)\fR: Keep \fBREBOOT_DELAY=0\fR (default). A delayed reboot
-(\fBshutdown -r +5\fR) can leave an unattended guest in a session-timeout limbo state under
-desktop hypervisors. An immediate reboot via \fBsystemctl reboot\fR cleanly resets the virtual
-ACPI hardware.
+(\fBshutdown -r +5\fR) can leave an unattended guest in session timeout limbo under desktop
+hypervisors. An immediate reboot via \fBsystemctl reboot\fR cleanly resets the virtual ACPI
+hardware before desktop session locks interfere.
 .IP \(bu 2
 \fBHost Power Management\fR: Desktop hosts configured to enter low-power sleep or suspend
 overnight will freeze guest VM execution. Ensure host sleep is inhibited or scheduled outside
@@ -148,6 +179,20 @@ the update maintenance window (\fBSCHEDULE_TIME\fR).
 .IP \(bu 2
 \fBLibvirt Lifecycle Policy\fR: Verify that the guest domain XML specifies
 \fB<on_reboot>restart</on_reboot>\fR (not \fBdestroy\fR).
+.SS Enterprise and Production Recommendations
+For mission-critical nodes, build orchestrators, CI/CD runners, and 24/7 server infrastructure,
+switch from desktop session hypervisors to \fBSystem Libvirt\fR (\fBqemu:///system\fR) managed via
+\fBvirt-manager\fR, Cockpit, or \fBvirsh\fR:
+.PP
+.RS
+.nf
+virsh --connect qemu:///system autostart <domain-name>
+.fi
+.RE
+.PP
+Running under system libvirt ensures the virtual machine starts automatically when the physical
+host boots, remains active regardless of user desktop logins or screen locks, and immediately
+re-posts virtual BIOS/GRUB following automated kernel reboots.
 .SH FILES
 .TP
 .B /etc/auto-updates/auto-updates.conf

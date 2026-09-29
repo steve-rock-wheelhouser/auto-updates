@@ -1,5 +1,5 @@
 Name:           auto-updates
-Version:        1.2.2
+Version:        1.2.3
 Release:        1%{?dist}
 Summary:        CLI and automated system updater for Fedora, Rocky Linux, and AlmaLinux
 
@@ -168,6 +168,13 @@ systemctl daemon-reload 2>/dev/null || true
 %ghost %attr(0640, root, root) %{_localstatedir}/log/auto-updates.log
 
 %changelog
+* Tue Sep 29 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.2.3-1
+- Add full interactive Terminal User Interface (TUI) configuration menu ('auto-updates tui' / '-i').
+- Update desktop application launcher to launch interactive TUI menu directly (Exec=auto-updates tui).
+- Add 'set-build-protection' CLI command to toggle compiler and build process reboot protection.
+- Add comprehensive Hypervisor Comparison Table (GNOME Boxes session vs. System Libvirt) to man pages and README.
+- Add enterprise recommendations for System Libvirt autostart on production build nodes.
+
 * Tue Sep 29 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.2.2-1
 - Add configurable REBOOT_DELAY support (default: 0 for immediate systemctl reboot).
 - Eliminate 5-minute delayed shutdown limbo in unattended and virtual machine environments.

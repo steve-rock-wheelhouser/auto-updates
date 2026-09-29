@@ -1,3 +1,13 @@
+auto-updates (1.2.3-1) unstable; urgency=medium
+
+  * Add full interactive Terminal User Interface (TUI) configuration menu ('auto-updates tui' / '-i').
+  * Update desktop application launcher to launch interactive TUI menu directly (Exec=auto-updates tui).
+  * Add 'set-build-protection' CLI command to toggle compiler and build process reboot protection.
+  * Add comprehensive Hypervisor Comparison Table (GNOME Boxes session vs. System Libvirt) to man pages and README.
+  * Add enterprise recommendations for System Libvirt autostart on production build nodes.
+
+ -- Steve Rock <steve.rock@wheelhouser.com>  Tue, 29 Sep 2026 05:15:00 -0400
+
 auto-updates (1.2.2-1) unstable; urgency=medium
 
   * Add configurable REBOOT_DELAY support (default: 0 for immediate systemctl reboot).

@@ -1,6 +1,6 @@
 .\" Manpage for auto-updates.conf.
 .\" Process with: groff -man -Tascii auto-updates.conf.5
-.TH AUTO-UPDATES.CONF 5 "29 September 2026" "auto-updates 1.2.2" "File Formats Manual"
+.TH AUTO-UPDATES.CONF 5 "29 September 2026" "auto-updates 1.2.3" "File Formats Manual"
 .SH NAME
 auto-updates.conf \- Configuration file for the auto-updates automated package service
 .SH SYNOPSIS
@@ -108,17 +108,50 @@ EMIT_VIA=stdio
 LOG_FILE=/var/log/auto-updates.log
 .fi
 .RE
-.SH VIRTUAL MACHINE AND HYPERVISOR CONSIDERATIONS
-When running inside a virtual machine (such as GNOME Boxes, QEMU/KVM, or virt-manager):
+.SH VIRTUAL MACHINE AND HYPERVISOR ARCHITECTURES
+When running \fBauto-updates\fR inside a virtual machine, the host hypervisor configuration
+determines whether unattended overnight reboots succeed or stall. Linux virtualization relies
+on two main execution models:
+.PP
+.nf
++-------------------------+-------------------------------+-------------------------------+
+| Feature                 | GNOME Boxes (qemu:///session) | System Libvirt (qemu:///system)|
++-------------------------+-------------------------------+-------------------------------+
+| Intended Use            | Desktop user app / ISO testing| Servers, CI/CD, 24/7 nodes    |
+| Execution Context       | User session (UID 1000)       | System daemon (virtqemud/root)|
+| Tied to Desktop?        | Yes (GNOME Shell, screen lock)| No (headless system daemon)   |
+| Survives Screen Lock?   | Often no (power-saving pauses)| Yes (independent of desktop)  |
+| Host Autostart Support? | No (requires graphical login) | Native (virsh autostart)      |
+| Guest Reboot Handling   | Tied to display window/SPICE  | Handled by hypervisor daemon  |
++-------------------------+-------------------------------+-------------------------------+
+.fi
+.SS GNOME Boxes Best Practices
+For desktop development VMs running under GNOME Boxes (\fBqemu:///session\fR):
 .IP \(bu 2
 \fBRun in Background\fR: Ensure \fB"Run in background"\fR is enabled in GNOME Boxes preferences
-so that closing the window or minimizing does not suspend the virtual machine.
+so that closing the window or locking the screen does not suspend the virtual machine.
 .IP \(bu 2
 \fBReboot Delay\fR: Keep \fBREBOOT_DELAY=0\fR so that reboot is executed immediately via
 \fBsystemctl reboot\fR rather than delaying 5 minutes.
 .IP \(bu 2
 \fBHost Power Management\fR: Ensure the hypervisor host system does not enter sleep or suspend
-during the scheduled update window.
+during the scheduled update window (\fBSCHEDULE_TIME\fR).
+.IP \(bu 2
+\fBLifecycle Policy\fR: Verify that the guest domain XML specifies
+\fB<on_reboot>restart</on_reboot>\fR (not \fBdestroy\fR).
+.SS Enterprise and Production Recommendations
+For 24/7 production hosts, build orchestration nodes, and CI/CD runners, migrate to
+\fBSystem Libvirt\fR (\fBqemu:///system\fR) managed by \fBvirt-manager\fR, Cockpit, or \fBvirsh\fR:
+.PP
+.RS
+.nf
+virsh --connect qemu:///system autostart <domain-name>
+.fi
+.RE
+.PP
+System Libvirt VMs run independently of graphical desktop sessions, survive desktop sleep and
+screen locks, start automatically at physical host power-on, and re-post virtual BIOS/GRUB
+immediately upon reboot.
 .SH FILES
 .I /etc/auto-updates/auto-updates.conf
 .SH SEE ALSO

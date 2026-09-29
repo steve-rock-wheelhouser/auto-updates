@@ -39,11 +39,10 @@
    - Compatible with both **DNF4** (Rocky Linux 8/9, AlmaLinux 8/9, RHEL 8/9) and **DNF5** (Fedora 41+, RHEL 10, Rocky 10).
    - Automatically adapts backend invocation and eliminates conflicting default distribution timers.
 
-5. **Interactive CLI Dashboard**:
-   - Check timer state, active mode, next scheduled run, live system reboot status, and pending updates:
-     ```bash
-     auto-updates status
-     ```
+5. **Interactive Terminal User Interface (TUI) & Desktop Launcher**:
+   - Launch directly via terminal (`auto-updates tui` or `auto-updates -i`) or click the **Auto-Updates** icon in the desktop application launcher.
+   - Provides a live status dashboard and an interactive numbered configuration menu: adjust update modes, reboot policies, reboot delay, execution times, weekly upgrade days, and toggle build protection without memorizing CLI syntax.
+   - For quick status queries, `auto-updates status` displays a non-interactive overview.
 
 6. **Manual Trigger & Dry-Run Testing**:
    - Run or test updates on demand:
@@ -60,11 +59,14 @@
 
 | Command | Description |
 | :--- | :--- |
+| `auto-updates tui` (or `-i`) | **Launch full interactive TUI configuration & actions menu** |
 | `auto-updates status` (or `-s`) | Display configuration, timer status, reboot status, and next scheduled run |
 | `sudo auto-updates set-mode security` | Set mode to daily security updates only |
 | `sudo auto-updates set-mode all` | Set mode to daily full updates (all packages every day) |
 | `sudo auto-updates set-mode weekly-all` | Set mode to daily security + weekly full updates |
 | `sudo auto-updates set-reboot <policy>` | Set reboot policy: `never`, `when-needed`, or `when-changed` |
+| `sudo auto-updates set-reboot-delay <0\|mins>` | Set delay before reboot in minutes (0 = immediate via systemctl reboot) |
+| `sudo auto-updates set-build-protection <true\|false>` | Toggle build and compilation process reboot protection |
 | `sudo auto-updates enable` | Enable and start the systemd timer |
 | `sudo auto-updates disable` | Stop and disable the systemd timer |
 | `sudo auto-updates run` | Trigger an immediate update run |
@@ -113,14 +115,36 @@ LOG_FILE=/var/log/auto-updates.log
 
 ---
 
-## Virtual Machine & Desktop Hypervisor Best Practices (GNOME Boxes / KVM)
+## Virtual Machine & Hypervisor Architectures (GNOME Boxes vs. System Libvirt)
 
-When running `auto-updates` inside virtual machines (e.g. GNOME Boxes, QEMU/KVM, or virt-manager):
+When running `auto-updates` inside virtual machines, the hypervisor's execution model directly impacts whether unattended overnight reboots succeed or stall. Linux virtualization relies on two distinct libvirt connection models:
 
-1. **Enable "Run in background"**: In GNOME Boxes, open VM **Preferences** -> **General / Resources**, and ensure **"Run in background"** is toggled **ON**. Without this, closing or minimizing the Boxes window may cause the hypervisor to pause or suspend the virtual machine.
-2. **Reboot Delay (Immediate Restart)**: Leave `REBOOT_DELAY=0` (default) or configure with `sudo auto-updates set-reboot-delay 0`. When updates require a reboot, `auto-updates` executes an immediate `systemctl reboot`. This avoids an unattended 5-minute delayed shutdown (`shutdown -r +5`) where desktop sessions or display sockets can timeout.
+### The Two Virtualization Models
+
+| Feature | GNOME Boxes (`qemu:///session`) | System Libvirt (`qemu:///system`) |
+| :--- | :--- | :--- |
+| **Intended Use** | Desktop user app (trying out ISOs, quick testing) | Servers, build infrastructure, CI/CD, 24/7 nodes |
+| **Execution Context** | Runs as your **desktop user** (`uid 1000`) inside your graphical login session | Runs as a **system daemon** under `root` / `systemd` (`virtqemud.service`) |
+| **Tied to Desktop?** | **Yes.** Tied to GNOME Shell, desktop session lock, and user power-saving | **No.** Completely headless; runs whether a user is logged into the desktop or not |
+| **Survives Screen Lock / Idle?** | **Often no.** Desktop power management can pause or throttle session VMs | **Yes.** Independent of desktop sleep, screen lock, or user logout |
+| **`virsh autostart` Support?** | **Not supported.** (No system daemon exists to boot it before login) | **Native.** Boots automatically when the physical host powers on |
+| **Guest Reboot Handling** | Dependent on the desktop UI window and SPICE display channel | Handled directly by the hypervisor daemon; re-posts BIOS/GRUB immediately |
+
+### Recommended Settings for GNOME Boxes (`qemu:///session`)
+For development and visual testing VMs running in GNOME Boxes:
+1. **Enable "Run in background"**: In GNOME Boxes, open VM **Preferences** -> **General / Resources**, and ensure **"Run in background"** is toggled **ON**. Without this, closing or minimizing the Boxes window may cause the hypervisor to pause or suspend the virtual machine when an ACPI reset occurs.
+2. **Reboot Delay (Immediate Restart)**: Keep `REBOOT_DELAY=0` (default) or configure with `sudo auto-updates set-reboot-delay 0`. When updates require a reboot, `auto-updates` executes an immediate `systemctl reboot`. This avoids an unattended 5-minute delayed shutdown (`shutdown -r +5`) where desktop sessions or display sockets can timeout.
 3. **Host Power & Sleep**: Ensure the hypervisor host workstation does not enter automatic system sleep or suspend during the scheduled update window (`SCHEDULE_TIME`).
 4. **Libvirt Domain Policy**: Verify the VM's domain XML configuration defines `<on_reboot>restart</on_reboot>` rather than `destroy`.
+
+### Enterprise & Production Recommendation: Use System Libvirt
+For mission-critical production environments, build orchestration nodes (such as build runners), CI/CD runners, and 24/7 server infrastructure:
+- **Switch to System Libvirt (`qemu:///system`)** managed via `virt-manager`, Cockpit, or `virsh`.
+- **Enable Host Autostart**:
+  ```bash
+  virsh --connect qemu:///system autostart <domain-name>
+  ```
+- **Why this is critical for production**: System Libvirt runs under systemd, operates completely independently of desktop user login sessions, survives host sleep/lockouts, boots automatically when the physical host powers on, and immediately handles guest kernel reboots in under 15 seconds.
 
 
 ---
