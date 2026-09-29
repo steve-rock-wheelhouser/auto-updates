@@ -1,7 +1,7 @@
 ---
 ticket_id: "BUG-20260928_191123"
 type: "installation"
-status: "pending"
+status: "resolved"
 severity: "high"
 project: "auto-updates"
 package: "auto-updates-1.2.1-1.fc45.noarch.rpm"
@@ -12,8 +12,11 @@ distro_version: "45"
 node: "user@10.0.0.166:2207"
 commit: "7647d5f"
 date: "2026-09-28T23:11:23Z"
+closed_at: "2026-09-29T01:44:56Z"
+resolved_by: "Verified cleanly on real target environment."
 pending_at: "2026-09-28T23:13:41Z"
 pending_reason: "Configured passwordless sudo in /etc/sudoers.d/orchestra-qa on node 2207. Verified dnf installation."
+accepted_by: "Tester"
 ---
 
 # Installation Failure: auto-updates on Fedora 45
@@ -46,3 +49,8 @@ sudo apt-get install -y --reinstall /tmp/auto-updates-1.2.1-1.fc45.noarch.rpm  #
 
 ## Pending Verification [2026-09-28T23:13:41Z]
 - **Fix / Staging Notes**: Configured passwordless sudo in /etc/sudoers.d/orchestra-qa on node 2207. Verified dnf installation.
+
+
+## Verified & Accepted [2026-09-29T01:44:56Z]
+- **Accepted By**: `Tester`
+- **Verification Notes**: Verified cleanly on real target environment.
