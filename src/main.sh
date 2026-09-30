@@ -87,10 +87,10 @@ show_menu() {
 
     case "$choice" in
         1)
-            ./build_rpm.sh
+            ./build-linux/build_rpm.sh
             ;;
         2)
-            ./build_deb.sh
+            ./build-linux/build_deb.sh
             ;;
         3)
             ./publish.sh
@@ -184,7 +184,7 @@ show_menu() {
 if [ $# -gt 0 ]; then
     case "$1" in
         --build|-b|build)
-            ./build_rpm.sh
+            ./build-linux/build_rpm.sh
             ;;
         --install|-i|install)
             RPM_FILE=$(find dist -name "auto-updates-*.noarch.rpm" | head -n 1)
@@ -192,7 +192,7 @@ if [ $# -gt 0 ]; then
                 sudo dnf install -y "$RPM_FILE"
             else
                 echo "No built RPM found. Building now..."
-                ./build_rpm.sh
+                ./build-linux/build_rpm.sh
                 sudo dnf install -y dist/auto-updates-*.noarch.rpm
             fi
             ;;

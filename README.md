@@ -155,7 +155,7 @@ To build the RPM package locally:
 
 ```bash
 cd /home/user/projects/Auto-Updates
-./build_rpm.sh
+./build-linux/build_rpm.sh
 ```
 
 The resulting RPM package will be placed in the `dist/` directory:

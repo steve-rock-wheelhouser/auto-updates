@@ -6,50 +6,52 @@ Tickets are created automatically by the Wheelhouser Automated Fleet QA Harness
 or manually filed by maintainers.
 
 ## Directory Structure
+Standardized enterprise 5-level hierarchy across all defect categories:
 ```text
 bug-reports/
-├── installation/             # Package installation & dependency errors (DNF, APT, MSIX, DMG)
-│   ├── linux/
-│   │   ├── debian/          # Debian GNU/Linux
-│   │   ├── ubuntu/          # Ubuntu Linux
-│   │   ├── fedora/          # Fedora Linux
-│   │   ├── rocky/           # Rocky Linux (Enterprise Linux)
-│   │   └── almalinux/       # AlmaLinux (Enterprise Linux)
-│   ├── macos/
-│   │   ├── arm64/           # Apple Silicon (M1/M2/M3/M4)
-│   │   └── x86_64/          # Intel (x86_64)
-│   └── windows/             # Windows sideload / MSIX install issues
-├── run-time/                 # Post-installation execution errors (crashes, missing DLLs/so, timeouts)
-│   ├── linux/ (distros)
-│   ├── macos/
-│   │   ├── arm64/
-│   │   └── x86_64/
-│   └── windows/
-└── marketing/                # Store packaging and metadata readiness
-    ├── metadata/            # AppStream metainfo.xml, AppxManifest.xml, Info.plist
-    ├── assets/              # Icons, banners, screenshot requirements
-    └── store-listings/      # Store descriptions, keywords, localized copy
+├── <type>/                     # installation | run-time | security | marketing
+│   └── <os>/                   # linux | macos | windows | all
+│       └── <distro>/           # fedora | rocky | ubuntu | debian | almalinux | macos | windows | all
+│           └── <version>/      # 45 | 10.0 | 24.04 | 15 | 11 | all
+│               └── <arch>/     # x86_64 | arm64 | all
+│                   └── <YYYYMMDD_HHMMSS_<slug>.md>
 ```
+
+### Hierarchy Breakdown:
+- **`<type>`**: Category of defect (`installation`, `run-time`, `security`, `marketing`).
+- **`<os>`**: Operating system family (`linux`, `macos`, `windows`, `all`).
+- **`<distro>`**: Distribution or platform (`fedora`, `rocky`, `ubuntu`, `debian`, `almalinux`, `macos`, `windows`, `all`).
+- **`<version>`**: Distribution release or OS version (`44`, `45`, `10.0`, `24.04`, `15`, `11`, `all`).
+- **`<arch>`**: CPU architecture (`x86_64`, `arm64`, `all`).
+
+### Canonical Examples:
+- `bug-reports/installation/linux/fedora/45/x86_64/`
+- `bug-reports/installation/macos/macos/15/arm64/`
+- `bug-reports/run-time/windows/windows/11/x86_64/`
+- `bug-reports/security/linux/rocky/10.0/x86_64/`
+- `bug-reports/marketing/linux/fedora/45/x86_64/`
+- `bug-reports/marketing/all/all/all/all/`
 
 ## Frontmatter Schema
 Each ticket is formatted in standard Markdown with YAML frontmatter:
 ```yaml
 ---
 ticket_id: "BUG-YYYYMMDD_HHMMSS"
-type: "installation"          # installation | run-time | marketing
-status: "open"                # open | in-progress | resolved | closed
+title: "Concise summary of the defect"
+type: "installation"          # installation | run-time | security | marketing
+status: "open"                # open | in-progress | pending | resolved | closed
 severity: "high"              # low | medium | high | critical
 project: "auto-updates"
 package: "package-filename.rpm"
-os: "linux"                   # linux | windows | macos
-arch: "arm64"                 # arm64 | x86_64 (primarily macOS / Windows)
-distro: "rocky"               # debian | ubuntu | fedora | rocky | almalinux | windows | macos
-distro_version: "10.2"
+os: "linux"                   # linux | macos | windows | all
+distro: "rocky"               # rocky | fedora | ubuntu | debian | almalinux | macos | windows | all
+distro_version: "10.0"        # 45 | 10.0 | 24.04 | 15 | 11 | all
+arch: "x86_64"                # x86_64 | arm64 | all
 node: "user@10.0.0.166:2202"
 commit: "abcdef0"
 date: "YYYY-MM-DDTHH:MM:SSZ"
-closed_at: "YYYY-MM-DDTHH:MM:SSZ"     # Populated upon resolution
-resolved_by: "Explanation or package" # Populated upon resolution
+closed_at: ""                 # Populated upon resolution
+resolved_by: ""               # Populated upon resolution
 ---
 ```
 

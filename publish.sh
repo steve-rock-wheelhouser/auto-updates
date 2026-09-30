@@ -37,7 +37,7 @@ FC45_RPM=$(find "$SCRIPT_DIR/build-linux/Output/fedora/45" "$SCRIPT_DIR/dist" -n
 # If RPMs are missing, build them
 if [ -z "$EL10_RPM" ] || [ -z "$FC44_RPM" ] || [ -z "$FC45_RPM" ]; then
     echo "⚠️ RPM packages for v${TARGET_VER} not found. Running build_rpm.sh..."
-    ./build_rpm.sh
+    "${SCRIPT_DIR}/build-linux/build_rpm.sh"
     EL10_RPM=$(find "$SCRIPT_DIR/build-linux/Output/rocky/10" "$SCRIPT_DIR/dist" -name "*auto-updates-${TARGET_VER}*el10*.noarch.rpm" 2>/dev/null | sort -V | tail -n 1 || true)
     FC44_RPM=$(find "$SCRIPT_DIR/build-linux/Output/fedora/44" "$SCRIPT_DIR/dist" -name "*auto-updates-${TARGET_VER}*fc44*.noarch.rpm" 2>/dev/null | sort -V | tail -n 1 || true)
     FC45_RPM=$(find "$SCRIPT_DIR/build-linux/Output/fedora/45" "$SCRIPT_DIR/dist" -name "*auto-updates-${TARGET_VER}*fc45*.noarch.rpm" 2>/dev/null | sort -V | tail -n 1 || true)
@@ -47,7 +47,7 @@ fi
 DEB_PKG=$(find "$SCRIPT_DIR/build-linux/Output/debian/13" "$SCRIPT_DIR/dist" -name "*auto-updates*${TARGET_VER}*.deb" 2>/dev/null | sort -V | tail -n 1 || true)
 if [ -z "$DEB_PKG" ]; then
     echo "⚠️ Debian package for v${TARGET_VER} not found. Running build_deb.sh..."
-    ./build_deb.sh
+    "${SCRIPT_DIR}/build-linux/build_deb.sh"
     DEB_PKG=$(find "$SCRIPT_DIR/build-linux/Output/debian/13" "$SCRIPT_DIR/dist" -name "*auto-updates*${TARGET_VER}*.deb" 2>/dev/null | sort -V | tail -n 1 || true)
 fi
 
