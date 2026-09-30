@@ -53,16 +53,17 @@ bash -n "libexec/auto-updates-runner"
 echo "  ✔ libexec/auto-updates-runner syntax check passed"
 
 # 5. Verify packaging spec matches VERSION
-for spec_path in "build-linux/auto-updates.spec" "auto-updates.spec"; do
-    if [ -f "$spec_path" ]; then
-        SPEC_VER=$(grep -E '^Version:' "$spec_path" | awk '{print $2}' | tr -d ' ')
-        if [ "${SPEC_VER}" != "${VERSION_SRC}" ]; then
-            echo "FAIL: ${spec_path} Version (${SPEC_VER}) does not match src/main.sh (${VERSION_SRC})!" >&2
-            exit 1
-        fi
-        echo "  ✔ ${spec_path} Version matches src/main.sh (${VERSION_SRC})"
+if [ -f "build-linux/auto-updates.spec" ]; then
+    SPEC_VER=$(grep -E '^Version:' build-linux/auto-updates.spec | awk '{print $2}' | tr -d ' ')
+    if [ "${SPEC_VER}" != "${VERSION_SRC}" ]; then
+        echo "FAIL: build-linux/auto-updates.spec Version (${SPEC_VER}) does not match src/main.sh (${VERSION_SRC})!" >&2
+        exit 1
     fi
-done
+    echo "  ✔ build-linux/auto-updates.spec Version matches src/main.sh (${VERSION_SRC})"
+else
+    echo "FAIL: build-linux/auto-updates.spec not found!" >&2
+    exit 1
+fi
 
 # 6. Verify desktop and metainfo assets
 if [ -f "desktop/auto-updates.desktop" ]; then

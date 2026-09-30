@@ -22,13 +22,7 @@ fi
 cd "$PROJECT_ROOT"
 
 NAME="auto-updates"
-if [ -f "${PROJECT_ROOT}/build-linux/auto-updates.spec" ]; then
-    SPEC_FILE="${PROJECT_ROOT}/build-linux/auto-updates.spec"
-elif [ -f "${SCRIPT_DIR}/auto-updates.spec" ]; then
-    SPEC_FILE="${SCRIPT_DIR}/auto-updates.spec"
-else
-    SPEC_FILE="${PROJECT_ROOT}/auto-updates.spec"
-fi
+SPEC_FILE="${PROJECT_ROOT}/build-linux/auto-updates.spec"
 MAIN_SH="${PROJECT_ROOT}/src/main.sh"
 
 SRC_VER=""
@@ -50,9 +44,6 @@ fi
 
 if [ -f "$SPEC_FILE" ]; then
     sed -i "s/^\(Version:[\t ]*\).*/\1${VERSION}/" "$SPEC_FILE"
-fi
-if [ -f "${PROJECT_ROOT}/auto-updates.spec" ] && [ "$SPEC_FILE" != "${PROJECT_ROOT}/auto-updates.spec" ]; then
-    sed -i "s/^\(Version:[\t ]*\).*/\1${VERSION}/" "${PROJECT_ROOT}/auto-updates.spec"
 fi
 if [ -f "${PROJECT_ROOT}/bin/auto-updates" ]; then
     sed -i "s/^\(VERSION=\"\)[^\"]*\(\"\)/\1${VERSION}\2/" "${PROJECT_ROOT}/bin/auto-updates"
