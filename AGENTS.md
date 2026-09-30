@@ -43,15 +43,20 @@ Whenever making ANY code changes, refactors, bug fixes, or new features in this 
    - Always archive the `implementation_plan.md` and `walkthrough.md` into `epics/YYYY-MM-DD-<epic-name>/` and commit them to the repository for every epic, feature, or major architectural modification.
 
 9. **Automated Testing Standards**:
-   - All projects must have a <project_name>/tests/ directory with at least one test script.
-   - All tests must pass before any build steps can be taken.
+   - All projects must have a `<project_name>/tests/` directory with a master test runner (`tests/run_tests.sh`).
+   - Testing is structured into three standardized tiers:
+     - **Smoke Testing** (`tests/smoke/`): Fast verification of entry points, version parity, and basic CLI sanity. Can be a documented subset of the unit tests.
+     - **Unit Testing** (`tests/unit/`): Granular tests per functional block, feature, configuration schema, or CLI command added.
+     - **End-to-End (E2E) Testing** (`tests/end-to-end/`): Complete integration workflows composing all automated tests across real environments.
+   - All tests must pass before any build steps can be taken (enforced via pre-build test gates in build scripts).
    - All new features must have tests.
-   - All bug fixes must have tests.
+   - All bug fixes must have tests (regression tests).
    - Tests shall be written in the same language as the code being tested.
    - Regression testing must be performed before any build steps can be taken.
-   - Complete or End-to-End (EtE) testing is composed of all automated tests.
+   - Complete or End-to-End (E2E) testing is composed of all automated tests.
    - Smoke testing can be a documented subset of the unit tests.
-   
+   - Unit Tests per functional block/ feature or functionality added.
+
 10. **Bug Report and Tracking Standards**:
    - All projects must maintain a dedicated `<project_name>/bug-reports/` directory for file-based QA and issue tracking.
    - **Directory & File Structure**:
