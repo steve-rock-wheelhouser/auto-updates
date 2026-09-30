@@ -46,3 +46,7 @@ Thumbs.db
 .idea/
 *.sublime-project
 *.sublime-workspace
+
+# Local developer overrides (AGENTS.md Rule 13)
+*.local.sh
+.local/

@@ -19,8 +19,8 @@ for script in \
     "${REPO_ROOT}/src/main.sh" \
     "${REPO_ROOT}/build-linux/build_rpm.sh" \
     "${REPO_ROOT}/build-linux/build_deb.sh" \
-    "${REPO_ROOT}/install_local.sh" \
-    "${REPO_ROOT}/publish.sh"; do
+    "${REPO_ROOT}/build-linux/install.sh" \
+    "${REPO_ROOT}/build-linux/uninstall.sh"; do
     if [ -f "${script}" ]; then
         bash -n "${script}"
         echo "  ✔ Syntax check passed: $(basename "${script}")"

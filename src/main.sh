@@ -71,9 +71,9 @@ show_menu() {
     echo "================================================================================"
     echo " 1) Build & Sign RPM Package       (Creates build-linux/Output/... & dist/...)"
     echo " 2) Build Debian (.deb) Package    (Creates build-linux/Output/... & dist/...)"
-    echo " 3) Publish Packages to Repo       (./publish.sh)"
+    echo " 3) Promote / Publish (via Orchestra) (Central release pipeline)"
     echo " 4) Install/Upgrade Local Package  (Installs built RPM or DEB for current OS)"
-    echo " 5) Run Local Standalone Install   (Directly installs CLI & systemd units)"
+    echo " 5) Install from Source (Standalone) (sudo ./build-linux/install.sh)"
     echo " 6) Check Auto-Updates Status      (auto-updates status)"
     echo " 7) Set Mode: Security Only        (sudo auto-updates set-mode security)"
     echo " 8) Set Mode: Daily All Updates    (sudo auto-updates set-mode all)"
@@ -93,7 +93,12 @@ show_menu() {
             ./build-linux/build_deb.sh
             ;;
         3)
-            ./publish.sh
+            if [ -f "${PROJECT_ROOT}/../orchestra/scripts/promote_production.sh" ]; then
+                "${PROJECT_ROOT}/../orchestra/scripts/promote_production.sh" --project auto-updates
+            else
+                echo "Notice: Deployment & publishing is managed centrally by Wheelhouser Orchestra (AGENTS.md Rule 13)."
+                echo "Run: orchestra/scripts/promote_production.sh --project auto-updates on the release node."
+            fi
             ;;
         4)
             if [ -f /etc/os-release ] && grep -qiE '(debian|ubuntu)' /etc/os-release; then
@@ -115,7 +120,7 @@ show_menu() {
             fi
             ;;
         5)
-            sudo ./install_local.sh
+            sudo ./build-linux/install.sh
             ;;
         6)
             if command -v auto-updates &>/dev/null; then
@@ -197,13 +202,17 @@ if [ $# -gt 0 ]; then
             fi
             ;;
         --local|local)
-            sudo ./install_local.sh
+            sudo ./build-linux/install.sh
             ;;
         --status|-s|status)
             ./bin/auto-updates status
             ;;
         --publish|-p|publish)
-            ./publish.sh
+            if [ -f "${PROJECT_ROOT}/../orchestra/scripts/promote_production.sh" ]; then
+                "${PROJECT_ROOT}/../orchestra/scripts/promote_production.sh" --project auto-updates
+            else
+                echo "Notice: Deployment & publishing is managed centrally by Wheelhouser Orchestra (AGENTS.md Rule 13)."
+            fi
             ;;
         --help|-h|help)
             echo "Usage: ./main.sh [build|publish|install|local|status|help]"

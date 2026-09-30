@@ -21,7 +21,12 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+if [[ "$(basename "$SCRIPT_DIR")" == "build-linux" ]]; then
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+else
+    PROJECT_ROOT="$SCRIPT_DIR"
+fi
+cd "$PROJECT_ROOT"
 
 # Detect package manager
 IS_DEB=false
