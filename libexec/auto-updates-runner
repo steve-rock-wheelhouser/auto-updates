@@ -31,12 +31,15 @@ EMIT_VIA="stdio"
 LOG_FILE="/var/log/auto-updates/auto-updates.log"
 REFRESH_METADATA="true"
 DEFER_REBOOT_IF_BUSY="true"
+INCLUDE_PHASED_UPDATES="false"
 
 # Load system configuration if present
 if [ -f "$CONF_FILE" ]; then
     # shellcheck source=/dev/null
     source "$CONF_FILE"
 fi
+
+INCLUDE_PHASED_UPDATES="${INCLUDE_PHASED_UPDATES:-false}"
 
 # Determine if log file is writable
 CAN_WRITE_LOG=false
@@ -104,6 +107,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         --no-defer-reboot)
             DEFER_REBOOT_IF_BUSY=false
+            shift
+            ;;
+        --include-phased)
+            INCLUDE_PHASED_UPDATES=true
+            shift
+            ;;
+        --no-include-phased)
+            INCLUDE_PHASED_UPDATES=false
             shift
             ;;
         *)
@@ -224,40 +235,55 @@ if [ "$REFRESH_METADATA" = "true" ]; then
     REFRESH_OPT="--refresh"
 fi
 
+TX_OUTPUT_FILE=$(mktemp /tmp/auto-updates-tx.XXXXXX 2>/dev/null || mktemp)
+# shellcheck disable=SC2064
+trap "rm -f '$TX_OUTPUT_FILE' 2>/dev/null || true" EXIT
+
+run_with_capture() {
+    local rc=0
+    "$@" 2>&1 | tee -a "$TX_OUTPUT_FILE" | emit_log || rc=${PIPESTATUS[0]}
+    return "$rc"
+}
+
 if [ "$BACKEND" = "apt" ]; then
-    log "INFO" "Using backend: APT / Unattended-Upgrades (refresh: ${REFRESH_METADATA})"
+    log "INFO" "Using backend: APT / Unattended-Upgrades (refresh: ${REFRESH_METADATA}, include phased: ${INCLUDE_PHASED_UPDATES})"
     if [ "$REFRESH_METADATA" = "true" ]; then
         log "INFO" "Refreshing APT package indices (apt-get update)..."
-        apt-get update -qq 2>&1 | emit_log || true
+        run_with_capture apt-get update -qq || true
+    fi
+
+    APT_PHASED_ARGS=()
+    if [ "${INCLUDE_PHASED_UPDATES:-false}" = "true" ]; then
+        APT_PHASED_ARGS+=("-o" "APT::Get::Always-Include-Phased-Updates=true")
     fi
 
     if [ "$UPGRADE_TYPE" = "security" ]; then
         if command -v unattended-upgrade &>/dev/null; then
             if [ "$DRY_RUN" = true ]; then
                 log "INFO" "Simulating security updates via unattended-upgrade --dry-run..."
-                unattended-upgrade --dry-run 2>&1 | emit_log || STATUS=$?
+                run_with_capture unattended-upgrade --dry-run || STATUS=$?
             else
                 log "INFO" "Applying security updates via unattended-upgrade..."
-                unattended-upgrade -d 2>&1 | emit_log || STATUS=$?
+                run_with_capture unattended-upgrade -d || STATUS=$?
             fi
         else
             log "WARN" "unattended-upgrade command not found; using apt-get --only-upgrade..."
             if [ "$DRY_RUN" = true ]; then
-                apt-get -s --only-upgrade upgrade -y 2>&1 | emit_log || STATUS=$?
+                run_with_capture apt-get -s --only-upgrade upgrade -y "${APT_PHASED_ARGS[@]}" || STATUS=$?
             else
-                DEBIAN_FRONTEND=noninteractive apt-get --only-upgrade upgrade -y -q \
-                    -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" 2>&1 | emit_log || STATUS=$?
+                DEBIAN_FRONTEND=noninteractive run_with_capture apt-get --only-upgrade upgrade -y -q \
+                    -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" "${APT_PHASED_ARGS[@]}" || STATUS=$?
             fi
         fi
     else
         # Full upgrade (all packages)
         if [ "$DRY_RUN" = true ]; then
             log "INFO" "Simulating full system upgrade via apt-get -s dist-upgrade..."
-            apt-get -s dist-upgrade 2>&1 | emit_log || STATUS=$?
+            run_with_capture apt-get -s dist-upgrade "${APT_PHASED_ARGS[@]}" || STATUS=$?
         else
             log "INFO" "Applying full system upgrade via apt-get dist-upgrade..."
-            DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y -q \
-                -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" 2>&1 | emit_log || STATUS=$?
+            DEBIAN_FRONTEND=noninteractive run_with_capture apt-get dist-upgrade -y -q \
+                -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" "${APT_PHASED_ARGS[@]}" || STATUS=$?
         fi
     fi
 elif [ "$BACKEND" = "dnf5" ]; then
@@ -266,34 +292,34 @@ elif [ "$BACKEND" = "dnf5" ]; then
         if [ "$UPGRADE_TYPE" = "security" ]; then
             log "INFO" "Checking available security updates via dnf5 check-upgrade --security..."
             # shellcheck disable=SC2086
-            dnf5 $REFRESH_OPT check-upgrade --security 2>&1 | emit_log || STATUS=$?
+            run_with_capture dnf5 $REFRESH_OPT check-upgrade --security || STATUS=$?
         else
             log "INFO" "Checking all available updates via dnf5 check-upgrade..."
             # shellcheck disable=SC2086
-            dnf5 $REFRESH_OPT check-upgrade 2>&1 | emit_log || STATUS=$?
+            run_with_capture dnf5 $REFRESH_OPT check-upgrade || STATUS=$?
         fi
     else
         # shellcheck disable=SC2086
-        dnf5 $REFRESH_OPT automatic --installupdates 2>&1 | emit_log || STATUS=$?
+        run_with_capture dnf5 $REFRESH_OPT automatic --installupdates || STATUS=$?
     fi
 elif [ "$BACKEND" = "dnf4" ]; then
     log "INFO" "Using backend: DNF4 dnf-automatic (refresh: ${REFRESH_METADATA})"
     if [ "$REFRESH_METADATA" = "true" ]; then
         log "INFO" "Refreshing DNF4 repository metadata cache..."
-        dnf makecache --refresh 2>&1 | emit_log || true
+        run_with_capture dnf makecache --refresh || true
     fi
     if [ "$DRY_RUN" = true ]; then
         if [ "$UPGRADE_TYPE" = "security" ]; then
             log "INFO" "Checking available security updates via dnf check-upgrade --security..."
             # shellcheck disable=SC2086
-            dnf $REFRESH_OPT check-upgrade --security 2>&1 | emit_log || STATUS=$?
+            run_with_capture dnf $REFRESH_OPT check-upgrade --security || STATUS=$?
         else
             log "INFO" "Checking all available updates via dnf check-upgrade..."
             # shellcheck disable=SC2086
-            dnf $REFRESH_OPT check-upgrade 2>&1 | emit_log || STATUS=$?
+            run_with_capture dnf $REFRESH_OPT check-upgrade || STATUS=$?
         fi
     else
-        dnf-automatic "$DNF_AUTO_CONF" --installupdates 2>&1 | emit_log || STATUS=$?
+        run_with_capture dnf-automatic "$DNF_AUTO_CONF" --installupdates || STATUS=$?
     fi
 else
     # Fallback to direct dnf invocation
@@ -301,18 +327,18 @@ else
     if [ "$UPGRADE_TYPE" = "security" ]; then
         if [ "$DRY_RUN" = true ]; then
             # shellcheck disable=SC2086
-            dnf $REFRESH_OPT check-upgrade --security 2>&1 | emit_log || STATUS=$?
+            run_with_capture dnf $REFRESH_OPT check-upgrade --security || STATUS=$?
         else
             # shellcheck disable=SC2086
-            dnf $REFRESH_OPT upgrade -y --security 2>&1 | emit_log || STATUS=$?
+            run_with_capture dnf $REFRESH_OPT upgrade -y --security || STATUS=$?
         fi
     else
         if [ "$DRY_RUN" = true ]; then
             # shellcheck disable=SC2086
-            dnf $REFRESH_OPT check-upgrade 2>&1 | emit_log || STATUS=$?
+            run_with_capture dnf $REFRESH_OPT check-upgrade || STATUS=$?
         else
             # shellcheck disable=SC2086
-            dnf $REFRESH_OPT upgrade -y 2>&1 | emit_log || STATUS=$?
+            run_with_capture dnf $REFRESH_OPT upgrade -y || STATUS=$?
         fi
     fi
 fi
@@ -320,9 +346,66 @@ fi
 EXEC_END=$(date +%s)
 DURATION=$(( EXEC_END - EXEC_START ))
 
+# Inspect transaction output for warnings, held packages, and conflicts
+HAS_TRANSACTION_WARNINGS=false
+
+if [ "$BACKEND" = "apt" ]; then
+    if grep -qi "deferred due to phasing" "$TX_OUTPUT_FILE" 2>/dev/null; then
+        HAS_TRANSACTION_WARNINGS=true
+        phased_list=$(awk '/deferred due to phasing:/{flag=1; next} /^[0-9]+ upgraded/{flag=0} flag' "$TX_OUTPUT_FILE" 2>/dev/null | tr -s '[:space:]' ' ' | sed 's/^[ ]*//;s/[ ]*$//' || true)
+        if [ -n "$phased_list" ]; then
+            log "WARN" "Ubuntu phased updates deferred: $phased_list"
+        else
+            log "WARN" "Ubuntu phased updates were deferred by APT policy."
+        fi
+        if [ "${INCLUDE_PHASED_UPDATES:-false}" != "true" ]; then
+            log "INFO" "To apply phased updates immediately, enable INCLUDE_PHASED_UPDATES=true (sudo auto-updates set-phased-updates true)."
+        fi
+    fi
+
+    if grep -qi "The following packages have been kept back:" "$TX_OUTPUT_FILE" 2>/dev/null; then
+        HAS_TRANSACTION_WARNINGS=true
+        kept_list=$(awk '/The following packages have been kept back:/{flag=1; next} /^[0-9]+ upgraded/{flag=0} flag' "$TX_OUTPUT_FILE" 2>/dev/null | tr -s '[:space:]' ' ' | sed 's/^[ ]*//;s/[ ]*$//' || true)
+        if [ -n "$kept_list" ]; then
+            log "WARN" "Packages kept back by APT due to dependency pinning or deprecation: $kept_list"
+        else
+            log "WARN" "Some packages were kept back by APT."
+        fi
+    fi
+
+    if grep -q -E "[0-9]+ not upgraded" "$TX_OUTPUT_FILE" 2>/dev/null; then
+        not_upgraded=$(grep -oE "[0-9]+ not upgraded" "$TX_OUTPUT_FILE" 2>/dev/null | head -n 1 || true)
+        if [ "$not_upgraded" != "0 not upgraded" ] && [ "$HAS_TRANSACTION_WARNINGS" = false ]; then
+            HAS_TRANSACTION_WARNINGS=true
+            log "WARN" "APT completed with $not_upgraded."
+        fi
+    fi
+else
+    # DNF4 / DNF5
+    if grep -qi -E "(Skipping packages with conflicts|Skipping packages with broken dependencies)" "$TX_OUTPUT_FILE" 2>/dev/null; then
+        HAS_TRANSACTION_WARNINGS=true
+        skipped_summary=$(grep -E "Skipping packages with (conflicts|broken dependencies):" -A 3 "$TX_OUTPUT_FILE" 2>/dev/null | grep -E '^[[:space:]]+[a-zA-Z0-9_-]+' | tr -s '[:space:]' ' ' | sed 's/^[ ]*//;s/[ ]*$//' | head -n 5 || true)
+        if [ -n "$skipped_summary" ]; then
+            log "WARN" "DNF skipped packages due to conflicts or broken dependencies: $skipped_summary"
+        else
+            log "WARN" "DNF skipped packages due to conflicts or broken dependencies."
+        fi
+    fi
+
+    if grep -qi -E "^Problem [0-9]+:" "$TX_OUTPUT_FILE" 2>/dev/null; then
+        HAS_TRANSACTION_WARNINGS=true
+        prob_count=$(grep -c -E "^Problem [0-9]+:" "$TX_OUTPUT_FILE" 2>/dev/null || true)
+        log "WARN" "DNF reported $prob_count transaction dependency problem(s)."
+    fi
+fi
+
 # Check result (exit codes 0 and 100 for check-update mean success)
 if [ "$STATUS" -eq 0 ] || [ "$STATUS" -eq 100 ]; then
-    log "SUCCESS" "Auto-Updates run completed successfully in ${DURATION}s. (Exit code: $STATUS)"
+    if [ "$HAS_TRANSACTION_WARNINGS" = true ]; then
+        log "WARN" "Auto-Updates run completed in ${DURATION}s with package notices/warnings. (Exit code: $STATUS)"
+    else
+        log "SUCCESS" "Auto-Updates run completed successfully in ${DURATION}s. (Exit code: $STATUS)"
+    fi
 else
     log "ERROR" "Auto-Updates run failed with exit code $STATUS after ${DURATION}s."
     exit "$STATUS"

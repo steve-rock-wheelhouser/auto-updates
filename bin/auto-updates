@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-VERSION="1.3.2"
+VERSION="1.3.3"
 CONF_FILE="/etc/auto-updates/auto-updates.conf"
 DNF_AUTO_CONF="/etc/dnf/automatic.conf"
 RUNNER_BIN="/usr/libexec/auto-updates-runner"
@@ -84,6 +84,7 @@ run_action() {
             set-time) cmd_set_time "$@" ;;
             set-day) cmd_set_day "$@" ;;
             set-build-protection|set-defer-reboot) cmd_set_defer_reboot "$@" ;;
+            set-phased-updates) cmd_set_phased_updates "$@" ;;
             enable) cmd_enable "$@" ;;
             disable) cmd_disable "$@" ;;
             run) cmd_run "$@" ;;
@@ -252,6 +253,14 @@ cmd_status() {
     fi
     printf "  ${BOLD}%-24s${RESET} : %s\n" "Metadata Refresh" "$refresh_status"
 
+    if [ "$os_type" = "deb" ]; then
+        local phased_status="standard (respect Ubuntu phased rollouts)"
+        if [ "${INCLUDE_PHASED_UPDATES:-false}" = "true" ]; then
+            phased_status="enabled (always include phased updates via APT)"
+        fi
+        printf "  ${BOLD}%-24s${RESET} : %s\n" "Phased Updates" "$phased_status"
+    fi
+
     # Reboot policy and description
     local reboot_desc=""
     case "$REBOOT" in
@@ -333,6 +342,12 @@ cmd_status() {
             printf "  ${BOLD}%-24s${RESET} : %s\n" "Last Log Entry" "$last_log"
         elif [ ! -r "$check_log" ]; then
             printf "  ${BOLD}%-24s${RESET} : %s\n" "Last Log Entry" "(Run with sudo to inspect privileged log file)"
+        fi
+
+        local last_notice
+        last_notice=$(grep -E '\[WARN\]|\[ERROR\]' "$check_log" 2>/dev/null | tail -n 1 || true)
+        if [ -n "$last_notice" ]; then
+            printf "  ${BOLD}%-24s${RESET} : ${YELLOW}%s${RESET}\n" "Recent Notice" "$last_notice"
         fi
     fi
 
@@ -627,6 +642,36 @@ cmd_set_defer_reboot() {
     fi
 }
 
+cmd_set_phased_updates() {
+    local val="${1:-}"
+    if [ -z "$val" ]; then
+        echo -e "${RED}[ERROR] Missing argument. Usage: auto-updates set-phased-updates [true|false]${RESET}" >&2
+        exit 1
+    fi
+    case "$val" in
+        true|on|enable|enabled|1|yes)
+            val="true"
+            ;;
+        false|off|disable|disabled|0|no)
+            val="false"
+            ;;
+        *)
+            echo -e "${RED}[ERROR] Invalid option '$val'. Expected 'true' or 'false'.${RESET}" >&2
+            exit 1
+            ;;
+    esac
+
+    require_root "set-phased-updates" "$val"
+    set_conf_key "INCLUDE_PHASED_UPDATES" "$val"
+
+    echo -e "${GREEN}${BOLD}[SUCCESS] Phased updates policy set to: ${val}${RESET}"
+    if [ "$val" = "true" ]; then
+        echo -e "  APT will include phased package rollouts immediately (-o APT::Get::Always-Include-Phased-Updates=true)."
+    else
+        echo -e "  APT will respect Ubuntu standard gradual phased rollout schedules."
+    fi
+}
+
 cmd_logs() {
     load_config
     local count="${1:-40}"
@@ -851,6 +896,7 @@ ${BOLD}COMMANDS:${RESET}
                                  ${BOLD}when-changed${RESET} : Reboot whenever any package is updated (appliance/kiosk mode)
   ${GREEN}set-reboot-delay <minutes>${RESET}   Set delay before reboot in minutes (0 = immediate via systemctl reboot)
   ${GREEN}set-build-protection <true|false>${RESET} Toggle automated build & compiler process reboot protection
+  ${GREEN}set-phased-updates <true|false>${RESET} Configure whether Ubuntu phased updates are included immediately
   ${GREEN}logs [N]${RESET}                     View the last N log lines (default: 40)
   ${GREEN}help${RESET}                         Show this help documentation
   ${GREEN}version${RESET}                      Show version information
@@ -938,6 +984,9 @@ case "$ACTION" in
         ;;
     set-build-protection|set-defer-reboot|defer-reboot)
         cmd_set_defer_reboot "$@"
+        ;;
+    set-phased-updates|phased-updates)
+        cmd_set_phased_updates "$@"
         ;;
     tui|interactive|--tui|-i)
         cmd_tui

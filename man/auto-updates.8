@@ -119,6 +119,11 @@ When set to \fBtrue\fR (default), automated reboots are postponed if active comp
 (\fBrpmbuild\fR, \fBmake\fR, \fBninja\fR, \fBcargo\fR) or system inhibitor locks are detected.
 Requires root privileges.
 .TP
+.BR set-phased-updates " " \fI{true|false}\fR
+Configures whether Ubuntu phased updates are included immediately via APT (\fB-o APT::Get::Always-Include-Phased-Updates=true\fR).
+When set to \fBfalse\fR (default), Ubuntu gradual phased rollout schedules are respected.
+Requires root privileges.
+.TP
 .BR logs " [" \fIN\fR ] " (alias " \fB\-l\fR )
 Displays the last \fIN\fR lines of \fB/var/log/auto-updates.log\fR (default: 40 lines).
 .TP

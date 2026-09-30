@@ -39,7 +39,7 @@ if [ -n "$SRC_VER" ]; then
 elif [ -n "$SPEC_VER" ]; then
     VERSION="$SPEC_VER"
 else
-    VERSION="1.3.2"
+    VERSION="1.3.3"
 fi
 RELEASE="1"
 ARCH="all"

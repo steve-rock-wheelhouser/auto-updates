@@ -6,7 +6,7 @@ _auto_updates() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    commands="tui status set-mode mode enable disable run check set-time set-day set-reboot set-reboot-delay set-build-protection logs help version"
+    commands="tui status set-mode mode enable disable run check set-time set-day set-reboot set-reboot-delay set-build-protection set-phased-updates logs help version"
     options="-s --status -i --tui --security --all --weekly-all --all-weekly --reboot -e --enable -d --disable -r --run -c --check -l --logs -h --help -v --version"
 
     case "$prev" in
@@ -22,7 +22,7 @@ _auto_updates() {
             COMPREPLY=( $(compgen -W "0 1 2 5 10 15 30" -- "$cur") )
             return 0
             ;;
-        set-build-protection|set-defer-reboot|defer-reboot)
+        set-build-protection|set-defer-reboot|defer-reboot|set-phased-updates)
             COMPREPLY=( $(compgen -W "true false" -- "$cur") )
             return 0
             ;;

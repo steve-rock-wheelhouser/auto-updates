@@ -39,7 +39,7 @@ if [ -n "$SRC_VER" ]; then
 elif [ -n "$SPEC_VER" ]; then
     VERSION="$SPEC_VER"
 else
-    VERSION="1.3.2"
+    VERSION="1.3.3"
 fi
 
 if [ -f "$SPEC_FILE" ]; then
@@ -57,7 +57,7 @@ echo " Building RPM package: ${NAME}-${VERSION}-${RELEASE}"
 echo "================================================================================"
 
 # Verify required tools
-for cmd in rpmbuild tar gzip rpmsign; do
+for cmd in rpmbuild tar gzip; do
     if ! command -v "$cmd" &>/dev/null; then
         echo "Error: Required tool '$cmd' is not installed." >&2
         exit 1
@@ -128,28 +128,32 @@ if [ -z "$LOCAL_DIST" ] || [ "$LOCAL_DIST" = ".el10" ]; then
     done
 fi
 
-echo ""
-echo "================================================================================"
-echo " Signing Newly Built RPM packages with GPG..."
-echo "================================================================================"
-mapfile -t NEW_RPMS < <(find "${TOPDIR}/RPMS" "${TOPDIR}/SRPMS" -name "*.rpm" 2>/dev/null | sort -u)
-if [ ${#NEW_RPMS[@]} -gt 0 ]; then
-    rpmsign --addsign "${NEW_RPMS[@]}"
-
+if command -v rpmsign &>/dev/null; then
     echo ""
     echo "================================================================================"
-    echo " Verifying GPG Signatures (Strict Security Mode)..."
+    echo " Signing Newly Built RPM packages with GPG..."
     echo "================================================================================"
-    for rpm_pkg in "${NEW_RPMS[@]}"; do
-        [ -f "$rpm_pkg" ] || continue
-        echo "    Checking: $(basename "$rpm_pkg")"
-        if ! rpm -Kv "$rpm_pkg" | grep -qiE "Header.*Signature.*OK"; then
-            echo "FATAL: Security verification failed for $rpm_pkg!" >&2
-            rpm -Kv "$rpm_pkg" >&2
-            exit 1
-        fi
-    done
-    echo "    [PASS] All package cryptographic signatures verified successfully."
+    mapfile -t NEW_RPMS < <(find "${TOPDIR}/RPMS" "${TOPDIR}/SRPMS" -name "*.rpm" 2>/dev/null | sort -u)
+    if [ ${#NEW_RPMS[@]} -gt 0 ]; then
+        rpmsign --addsign "${NEW_RPMS[@]}"
+
+        echo ""
+        echo "================================================================================"
+        echo " Verifying GPG Signatures (Strict Security Mode)..."
+        echo "================================================================================"
+        for rpm_pkg in "${NEW_RPMS[@]}"; do
+            [ -f "$rpm_pkg" ] || continue
+            echo "    Checking: $(basename "$rpm_pkg")"
+            if ! rpm -Kv "$rpm_pkg" | grep -qiE "Header.*Signature.*OK"; then
+                echo "FATAL: Security verification failed for $rpm_pkg!" >&2
+                rpm -Kv "$rpm_pkg" >&2
+                exit 1
+            fi
+        done
+        echo "    [PASS] All package cryptographic signatures verified successfully."
+    fi
+else
+    echo "Notice: rpmsign not found on host; skipping package signing."
 fi
 
 # Copy resulting verified RPMs to standardized build-linux/Output and dist

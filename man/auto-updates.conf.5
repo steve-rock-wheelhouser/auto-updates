@@ -72,6 +72,11 @@ are running. If detected, reboot is safely postponed until the next cycle.
 When set to \fBtrue\fR (default), forces DNF to query upstream repository mirrors for fresh
 metadata before every update run, bypassing cached metadata expiration windows.
 .TP
+.BR INCLUDE_PHASED_UPDATES = \fI{true|false}\fR
+When set to \fBtrue\fR, passes \fB-o APT::Get::Always-Include-Phased-Updates=true\fR on Ubuntu
+and Debian systems to apply phased packages immediately. When set to \fBfalse\fR (default),
+Ubuntu gradual phased rollout policies are respected.
+.TP
 .BR RANDOM_SLEEP = \fISECONDS\fR
 Maximum randomized delay in seconds introduced before executing DNF commands. Prevents
 simultaneous mirror load spikes across large fleets. Default is \fB10\fR.

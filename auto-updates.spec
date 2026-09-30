@@ -1,5 +1,5 @@
 Name:           auto-updates
-Version:        1.3.2
+Version:        1.3.3
 Release:        1%{?dist}
 Summary:        CLI and automated system updater for Fedora, Rocky Linux, and AlmaLinux
 
@@ -7,6 +7,8 @@ License:        GPL-3.0-or-later
 URL:            https://github.com/steve-rock-wheelhouser/auto-updates
 Source0:        %{url}/archive/v%{version}/%{name}-%{version}.tar.gz
 BuildArch:      noarch
+
+%{!?_unitdir: %global _unitdir %{_prefix}/lib/systemd/system}
 
 BuildRequires:  desktop-file-utils
 Requires:       dnf-automatic
@@ -109,11 +111,6 @@ EOF
     )
 fi
 
-# Ensure log directory and file exist
-mkdir -p %{_localstatedir}/log/auto-updates
-touch %{_localstatedir}/log/auto-updates/auto-updates.log
-ln -sfn auto-updates/auto-updates.log %{_localstatedir}/log/auto-updates.log 2>/dev/null || true
-
 # Disable any default distribution dnf-automatic timers to prevent duplicate runs
 systemctl disable --now dnf-automatic.timer 2>/dev/null || true
 systemctl disable --now dnf-automatic-install.timer 2>/dev/null || true
@@ -170,6 +167,12 @@ systemctl daemon-reload 2>/dev/null || true
 %ghost %attr(0640, root, root) %{_localstatedir}/log/auto-updates.log
 
 %changelog
+* Wed Sep 30 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.3.3-1
+- Add Ubuntu APT phased updates detection and INCLUDE_PHASED_UPDATES configuration option.
+- Add DNF transaction conflict, held package, and broken dependency warning detection.
+- Add 'set-phased-updates' CLI command and bash completion.
+- Display recent transaction warnings/notices and phased update policy in status dashboard.
+
 * Tue Sep 29 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.3.2-1
 - Release 1.3.2: Automated sync and verification for Orchestra packaging, staging, and fleet QA.
 
