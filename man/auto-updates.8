@@ -1,6 +1,6 @@
 .\" Manpage for auto-updates.
 .\" Process with: groff -man -Tascii auto-updates.8
-.TH AUTO-UPDATES 8 "29 September 2026" "auto-updates 1.2.3" "System Administration Commands"
+.TH AUTO-UPDATES 8 "01 October 2026" "auto-updates 1.4.0" "System Administration Commands"
 .SH NAME
 auto-updates \- Automated system updates manager and systemd integration
 .SH SYNOPSIS
@@ -53,16 +53,19 @@ day (default: Sunday at 03:30 AM). Recommended for workstations and development 
 .SH COMMANDS
 .TP
 .B tui \fR(alias \fBinteractive\fR, \fB\-i\fR, \fB\-\-tui\fR)
-Launches an interactive Terminal User Interface (TUI) menu dashboard. Displays live system
+Launches the interactive Terminal User Interface (TUI) menu dashboard. When \fBauto-updates\fR is
+invoked without arguments from an interactive terminal (TTY), it automatically defaults to this
+interactive TUI dashboard, matching standard Wheelhouser developer CLI tooling. Displays live system
 update status and allows the user to interactively configure the update mode, reboot policy,
 reboot delay, daily execution time, weekly full update day, toggle build process protection,
-trigger update checks and runs, and inspect recent logs directly without needing to open a
-terminal prompt or memorize command-line flags.
+toggle phased updates (on Ubuntu), trigger update checks and runs, and inspect recent logs.
 .TP
 .B status \fR(alias \fB\-s\fR, \fB\-\-status\fR)
-Displays an interactive status dashboard showing the systemd timer state, configured
-mode, execution schedule, backend implementation, remote metadata refresh status,
-configured reboot policy, active build protection status, and live system reboot requirements.
+Displays a status dashboard showing the systemd timer state, configured mode, execution schedule,
+backend implementation, remote metadata refresh status, configured reboot policy, active build
+protection status, and live system reboot requirements. When executed in a non-interactive context
+(e.g., piped, redirected, or in automated scripts), bare \fBauto-updates\fR automatically executes
+this non-interactive status command and exits immediately.
 .TP
 .BR set-mode " " \fIMODE\fR " | " \fBmode\fR " " \fIMODE\fR
 Sets the update mode to \fBsecurity\fR, \fBall\fR, or \fBweekly-all\fR. Requires root privileges.

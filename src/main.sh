@@ -54,11 +54,12 @@
 # 1.3.1 - version update to test orchestra process
 # 1.3.2 - version update to test orchestra process
 # 1.3.3 - Add Ubuntu APT phased updates detection, INCLUDE_PHASED_UPDATES option, and DNF transaction conflict warnings
+# 1.4.0 - Standardize interactive CLI TUI workflow: default bare auto-updates invocation in interactive terminals to TUI dashboard and config menu matching git-tools
 # ==============================================================================
 
 set -euo pipefail
 
-VERSION="1.3.3"
+VERSION="1.4.0"
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SRC_DIR}/.." && pwd)"

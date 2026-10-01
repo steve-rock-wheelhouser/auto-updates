@@ -52,7 +52,61 @@ if [ "${EXIT_CODE}" -eq 0 ]; then
 fi
 echo "  ✔ Invalid command correctly rejected with non-zero exit code"
 
-# 3. Test completions file syntax
+# 3. Test non-interactive vs interactive CLI execution
+# In non-interactive mode (e.g. redirected or stdin from /dev/null), bare command runs status and exits 0 cleanly without blocking
+NON_INTERACTIVE_OUT=$("${REPO_ROOT}/bin/auto-updates" < /dev/null 2>&1)
+if [[ "${NON_INTERACTIVE_OUT}" != *"Auto-Updates Status"* ]]; then
+    echo "FAIL: Bare auto-updates in non-interactive mode did not produce status dashboard!" >&2
+    exit 1
+fi
+echo "  ✔ Bare auto-updates in non-interactive mode runs status and exits cleanly"
+
+# Test explicit status command
+"${REPO_ROOT}/bin/auto-updates" status < /dev/null >/dev/null
+echo "  ✔ auto-updates status exits 0"
+
+# In interactive terminal mode (simulated via pty), bare command launches cmd_tui with prompt
+PTY_OUTPUT=$(python3 -c "
+import pty, os, select
+master, slave = pty.openpty()
+pid = os.fork()
+if pid == 0:
+    os.close(master)
+    os.setsid()
+    os.dup2(slave, 0)
+    os.dup2(slave, 1)
+    os.dup2(slave, 2)
+    os.close(slave)
+    os.execl('${REPO_ROOT}/bin/auto-updates', 'auto-updates')
+else:
+    os.close(slave)
+    out = b''
+    # Wait for prompt, then send newline to exit
+    import time
+    time.sleep(0.3)
+    os.write(master, b'\n')
+    while True:
+        r, _, _ = select.select([master], [], [], 1.0)
+        if not r:
+            break
+        try:
+            chunk = os.read(master, 1024)
+            if not chunk:
+                break
+            out += chunk
+        except OSError:
+            break
+    os.close(master)
+    os.waitpid(pid, 0)
+    print(out.decode('utf-8', errors='ignore'))
+")
+if [[ "${PTY_OUTPUT}" != *"Press [c] to configure, or Enter to close:"* ]]; then
+    echo "FAIL: Bare auto-updates in interactive terminal did not prompt for configuration!" >&2
+    exit 1
+fi
+echo "  ✔ Bare auto-updates in interactive terminal prompts for configuration ([c] to configure)"
+
+# 4. Test completions file syntax
 if [ -f "${REPO_ROOT}/completions/auto-updates.bash" ]; then
     bash -n "${REPO_ROOT}/completions/auto-updates.bash"
     echo "  ✔ Shell completion syntax valid"

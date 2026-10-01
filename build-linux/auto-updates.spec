@@ -1,5 +1,5 @@
 Name:           auto-updates
-Version:        1.3.3
+Version:        1.4.0
 Release:        1%{?dist}
 Summary:        CLI and automated system updater for Fedora, Rocky Linux, and AlmaLinux
 
@@ -167,6 +167,12 @@ systemctl daemon-reload 2>/dev/null || true
 %ghost %attr(0640, root, root) %{_localstatedir}/log/auto-updates.log
 
 %changelog
+* Thu Oct 01 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.4.0-1
+- Standardize interactive CLI TUI workflow: bare auto-updates in interactive terminal automatically presents TUI dashboard and configure menu matching git-tools.
+- Add direct numeric/character shortcuts to initial TUI dashboard prompt.
+- Add interactive Phased Updates toggle option for Ubuntu/Debian systems in TUI configure menu.
+- Ensure non-interactive invocations execute static status reporting without blocking.
+
 * Wed Sep 30 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.3.3-1
 - Add Ubuntu APT phased updates detection and INCLUDE_PHASED_UPDATES configuration option.
 - Add DNF transaction conflict, held package, and broken dependency warning detection.
