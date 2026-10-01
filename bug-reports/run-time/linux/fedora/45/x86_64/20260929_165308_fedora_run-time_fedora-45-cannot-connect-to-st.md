@@ -1,7 +1,7 @@
 ---
 ticket_id: "BUG-20260929_165308"
 type: "run-time"
-status: "resolved"
+status: "open"
 severity: "low"
 project: "auto-updates"
 package: "auto-updates-1.3.2-1.fc45.noarch.rpm"
@@ -12,10 +12,7 @@ distro_version: "45"
 node: "user@10.0.0.166:2207"
 commit: "7a515ba"
 date: "2026-09-29T16:53:08Z"
-closed_at: "2026-10-01T16:34:56Z"
-resolved_by: "Accepted: Tested and approved"
 title: "Fedora 45 Cannot connect to staging.wheelhouser.com"
-accepted_by: "Automated Agent"
 ---
 
 # [LOW] Fedora 45 Cannot connect to staging.wheelhouser.com
@@ -45,3 +42,8 @@ auto-updater tested and approved
 ## Verified & Accepted [2026-10-01T16:34:56Z]
 - **Accepted By**: `Automated Agent`
 - **Verification Notes**: Accepted: Tested and approved
+
+
+## Reopened [2026-10-01T19:04:46Z]
+- **Reopened By**: `Tester on staging.wheelhouser.com`
+- **Status**: Reopened on Staging Hub.
