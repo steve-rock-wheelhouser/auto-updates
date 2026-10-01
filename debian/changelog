@@ -1,3 +1,9 @@
+auto-updates (1.4.1-1) unstable; urgency=medium
+
+  * Fix test_cli.sh interactive PTY race condition: dynamically wait for TUI prompt to allow needs-restarting and package queries to complete on Rocky Linux and AlmaLinux build nodes.
+
+ -- Steve Rock <steve.rock@wheelhouser.com>  Thu, 01 Oct 2026 11:45:00 -0400
+
 auto-updates (1.4.0-1) unstable; urgency=medium
 
   * Standardize interactive CLI TUI workflow: bare auto-updates in interactive terminal automatically presents TUI dashboard and configure menu matching git-tools.

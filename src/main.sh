@@ -55,11 +55,12 @@
 # 1.3.2 - version update to test orchestra process
 # 1.3.3 - Add Ubuntu APT phased updates detection, INCLUDE_PHASED_UPDATES option, and DNF transaction conflict warnings
 # 1.4.0 - Standardize interactive CLI TUI workflow: default bare auto-updates invocation in interactive terminals to TUI dashboard and config menu matching git-tools
+# 1.4.1 - Fix test_cli.sh interactive PTY race condition: dynamically wait for TUI prompt to allow needs-restarting and package queries to complete on Rocky Linux and AlmaLinux build nodes
 # ==============================================================================
 
 set -euo pipefail
 
-VERSION="1.4.0"
+VERSION="1.4.1"
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SRC_DIR}/.." && pwd)"

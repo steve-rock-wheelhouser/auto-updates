@@ -67,7 +67,7 @@ echo "  ✔ auto-updates status exits 0"
 
 # In interactive terminal mode (simulated via pty), bare command launches cmd_tui with prompt
 PTY_OUTPUT=$(python3 -c "
-import pty, os, select
+import pty, os, select, time
 master, slave = pty.openpty()
 pid = os.fork()
 if pid == 0:
@@ -81,23 +81,31 @@ if pid == 0:
 else:
     os.close(slave)
     out = b''
-    # Wait for prompt, then send newline to exit
-    import time
-    time.sleep(0.3)
-    os.write(master, b'\n')
-    while True:
-        r, _, _ = select.select([master], [], [], 1.0)
-        if not r:
-            break
-        try:
-            chunk = os.read(master, 1024)
-            if not chunk:
+    start = time.time()
+    sent_newline = False
+    # Wait up to 15 seconds for interactive prompt
+    while time.time() - start < 15:
+        r, _, _ = select.select([master], [], [], 0.2)
+        if r:
+            try:
+                chunk = os.read(master, 1024)
+                if not chunk:
+                    break
+                out += chunk
+                if b'Press [c] to configure' in out and not sent_newline:
+                    os.write(master, b'\n')
+                    sent_newline = True
+            except OSError:
                 break
-            out += chunk
-        except OSError:
-            break
+        else:
+            if sent_newline:
+                # Once prompt was received and newline sent, wait briefly for clean exit
+                break
     os.close(master)
-    os.waitpid(pid, 0)
+    try:
+        os.waitpid(pid, 0)
+    except OSError:
+        pass
     print(out.decode('utf-8', errors='ignore'))
 ")
 if [[ "${PTY_OUTPUT}" != *"Press [c] to configure, or Enter to close:"* ]]; then
