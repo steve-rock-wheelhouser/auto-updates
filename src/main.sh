@@ -56,11 +56,12 @@
 # 1.3.3 - Add Ubuntu APT phased updates detection, INCLUDE_PHASED_UPDATES option, and DNF transaction conflict warnings
 # 1.4.0 - Standardize interactive CLI TUI workflow: default bare auto-updates invocation in interactive terminals to TUI dashboard and config menu matching git-tools
 # 1.4.1 - Fix test_cli.sh interactive PTY race condition: dynamically wait for TUI prompt to allow needs-restarting and package queries to complete on Rocky Linux and AlmaLinux build nodes
+# 1.4.2 - Fix false-positive reboot detection on DNF5 and Fedora: prioritize needs-restarting without -C and pass --disablerepo='*' to dnf5 to avoid mirror connection timeouts and cache-miss errors
 # ==============================================================================
 
 set -euo pipefail
 
-VERSION="1.4.1"
+VERSION="1.4.2"
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SRC_DIR}/.." && pwd)"

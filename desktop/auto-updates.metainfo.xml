@@ -53,6 +53,11 @@
     <binary>auto-updates</binary>
   </provides>
   <releases>
+    <release version="1.4.2" date="2026-10-01">
+      <description>
+        <p>Fix false-positive reboot detection on DNF5 and Fedora: prioritize dnf5 with --disablerepo='*' and needs-restarting without mirror cache dependencies, and ensure exit code 1 is required for reboot trigger.</p>
+      </description>
+    </release>
     <release version="1.4.1" date="2026-10-01">
       <description>
         <p>Fix test_cli.sh interactive PTY race condition: dynamically wait for TUI prompt to allow needs-restarting and package queries to complete on Rocky Linux and AlmaLinux build nodes.</p>

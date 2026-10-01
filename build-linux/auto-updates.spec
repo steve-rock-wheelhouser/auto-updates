@@ -1,5 +1,5 @@
 Name:           auto-updates
-Version:        1.4.1
+Version:        1.4.2
 Release:        1%{?dist}
 Summary:        CLI and automated system updater for Fedora, Rocky Linux, and AlmaLinux
 
@@ -167,6 +167,10 @@ systemctl daemon-reload 2>/dev/null || true
 %ghost %attr(0640, root, root) %{_localstatedir}/log/auto-updates.log
 
 %changelog
+* Thu Oct 01 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.4.2-1
+- Fix false-positive reboot detection on DNF5 and Fedora: prioritize needs-restarting without -C and pass --disablerepo='*' to dnf5 to avoid mirror connection timeouts and cache-miss errors.
+- Ensure only exit code 1 triggers REBOOT REQUIRED; exit code 0 or missing cache returns Clean status.
+
 * Thu Oct 01 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.4.1-1
 - Fix test_cli.sh interactive PTY race condition: dynamically wait for TUI prompt to allow needs-restarting and package queries to complete on Rocky Linux and AlmaLinux build nodes.
 

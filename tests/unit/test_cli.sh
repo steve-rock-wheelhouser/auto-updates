@@ -120,4 +120,92 @@ if [ -f "${REPO_ROOT}/completions/auto-updates.bash" ]; then
     echo "  ✔ Shell completion syntax valid"
 fi
 
+# 5. Regression Test: Reboot status detection does not falsely report REBOOT REQUIRED
+# Test that status output contains valid System Reboot Status line
+STATUS_OUT=$("${REPO_ROOT}/bin/auto-updates" status < /dev/null)
+if [[ "${STATUS_OUT}" != *"System Reboot Status"* ]]; then
+    echo "FAIL: Status output does not include System Reboot Status!" >&2
+    exit 1
+fi
+echo "  ✔ System Reboot Status reported in status dashboard"
+
+# Simulate environments with custom PATH containing mocks
+MOCK_DIR=$(mktemp -d)
+trap 'rm -rf "${MOCK_DIR}"' EXIT
+
+# --- DNF5 Reboot Checks ---
+# Mock DNF5 that supports needs-restarting
+cat <<'EOF' > "${MOCK_DIR}/dnf5"
+#!/bin/bash
+if [ "$1" = "needs-restarting" ] && [ "$2" = "--help" ]; then
+    exit 0
+fi
+if [[ "$*" == *"--disablerepo="* ]] || [[ "$*" == *"--disablerepo '*'"* ]]; then
+    exit "${MOCK_DNF5_EXIT:-0}"
+fi
+# Without disablerepo, simulate network error
+exit 2
+EOF
+chmod +x "${MOCK_DIR}/dnf5"
+
+# Case 1: DNF5 returns 0 (Clean)
+CLEAN_OUT=$(MOCK_DNF5_EXIT=0 PATH="${MOCK_DIR}:${PATH}" "${REPO_ROOT}/bin/auto-updates" status < /dev/null)
+if [[ "${CLEAN_OUT}" != *"Clean (No reboot required)"* ]]; then
+    echo "FAIL: Expected 'Clean (No reboot required)' when DNF5 exits 0, got:" >&2
+    echo "${CLEAN_OUT}" >&2
+    exit 1
+fi
+echo "  ✔ DNF5 with --disablerepo='*' exit 0 correctly reports 'Clean (No reboot required)'"
+
+# Case 2: DNF5 returns 1 (Reboot required)
+REBOOT_OUT=$(MOCK_DNF5_EXIT=1 PATH="${MOCK_DIR}:${PATH}" "${REPO_ROOT}/bin/auto-updates" status < /dev/null)
+if [[ "${REBOOT_OUT}" != *"REBOOT REQUIRED"* ]]; then
+    echo "FAIL: Expected 'REBOOT REQUIRED' when DNF5 exits 1, got:" >&2
+    echo "${REBOOT_OUT}" >&2
+    exit 1
+fi
+echo "  ✔ DNF5 with --disablerepo='*' exit 1 correctly reports 'REBOOT REQUIRED'"
+
+# Case 3: DNF5 returns non-zero error (> 1, e.g. cache or network error) -> does NOT falsely report REBOOT REQUIRED
+ERR_OUT=$(MOCK_DNF5_EXIT=2 PATH="${MOCK_DIR}:${PATH}" "${REPO_ROOT}/bin/auto-updates" status < /dev/null)
+if [[ "${ERR_OUT}" == *"REBOOT REQUIRED"* ]]; then
+    echo "FAIL: DNF5 non-1 error code should not trigger REBOOT REQUIRED, got:" >&2
+    echo "${ERR_OUT}" >&2
+    exit 1
+fi
+echo "  ✔ DNF5 command error does not falsely report 'REBOOT REQUIRED'"
+
+# --- Fallback: needs-restarting (when DNF5 is not available) ---
+# Disable DNF5 in mock
+cat <<'EOF' > "${MOCK_DIR}/dnf5"
+#!/bin/bash
+exit 1
+EOF
+chmod +x "${MOCK_DIR}/dnf5"
+
+# Mock needs-restarting
+cat <<'EOF' > "${MOCK_DIR}/needs-restarting"
+#!/bin/bash
+exit "${MOCK_NR_EXIT:-0}"
+EOF
+chmod +x "${MOCK_DIR}/needs-restarting"
+
+# Case 4: needs-restarting returns 0 (Clean)
+NR_CLEAN_OUT=$(MOCK_NR_EXIT=0 PATH="${MOCK_DIR}:${PATH}" "${REPO_ROOT}/bin/auto-updates" status < /dev/null)
+if [[ "${NR_CLEAN_OUT}" != *"Clean (No reboot required)"* ]]; then
+    echo "FAIL: Expected 'Clean (No reboot required)' when needs-restarting exits 0, got:" >&2
+    echo "${NR_CLEAN_OUT}" >&2
+    exit 1
+fi
+echo "  ✔ needs-restarting exit 0 correctly reports 'Clean (No reboot required)'"
+
+# Case 5: needs-restarting returns 1 (Reboot required)
+NR_REBOOT_OUT=$(MOCK_NR_EXIT=1 PATH="${MOCK_DIR}:${PATH}" "${REPO_ROOT}/bin/auto-updates" status < /dev/null)
+if [[ "${NR_REBOOT_OUT}" != *"REBOOT REQUIRED"* ]]; then
+    echo "FAIL: Expected 'REBOOT REQUIRED' when needs-restarting exits 1, got:" >&2
+    echo "${NR_REBOOT_OUT}" >&2
+    exit 1
+fi
+echo "  ✔ needs-restarting exit 1 correctly reports 'REBOOT REQUIRED'"
+
 echo "--- [Unit Test] CLI Tests Passed! ---"
