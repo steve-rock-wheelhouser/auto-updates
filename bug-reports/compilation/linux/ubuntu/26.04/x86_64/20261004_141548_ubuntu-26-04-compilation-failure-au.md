@@ -1,7 +1,7 @@
 ---
 ticket_id: "BUG-20261004_141548_ubuntu"
 type: "compilation"
-status: "pending"
+status: "resolved"
 severity: "high"
 project: "auto-updates"
 package: "auto-updates_1.4.2-1_all.deb"
@@ -12,11 +12,12 @@ distro_version: "26.04"
 node: "ubuntu"
 commit: "12b3cab"
 date: "2026-10-04T14:15:48Z"
-closed_at: ""
-resolved_by: ""
+closed_at: "2026-10-04T16:23:28Z"
+resolved_by: "Verified & Accepted: Fixed in v1.4.3-1. Adapted test_cli.sh for Debian/Ubuntu reboot check paths, all automated tests pass, and packages are deployed to production repository."
 pending_at: "2026-10-04T14:26:24Z"
 fixed_in: "1.4.3-1"
 pending_reason: "Adapted test_cli.sh for Debian/Ubuntu reboot check paths via AUTO_UPDATES_OS_TYPE and REBOOT_REQUIRED_FILE, preventing DNF5 false failure during pre-build test gate in build_deb.sh"
+accepted_by: "Automated Agent"
 ---
 # [HIGH] Ubuntu 26.04 Compilation Failure: auto-updates v1.4.2
 
@@ -68,3 +69,8 @@ In `tests/unit/test_cli.sh`, mock DNF5 reboot checks were added in v1.4.2. On Ub
 ## Pending Verification [2026-10-04T14:26:24Z]
 - **Fix / Staging Notes**: Adapted test_cli.sh for Debian/Ubuntu reboot check paths via AUTO_UPDATES_OS_TYPE and REBOOT_REQUIRED_FILE, preventing DNF5 false failure during pre-build test gate in build_deb.sh
 - **Target Candidate**: `1.4.3-1`
+
+
+## Verified & Accepted [2026-10-04T16:23:28Z]
+- **Accepted By**: `Automated Agent`
+- **Verification Notes**: Verified & Accepted: Fixed in v1.4.3-1. Adapted test_cli.sh for Debian/Ubuntu reboot check paths, all automated tests pass, and packages are deployed to production repository.
