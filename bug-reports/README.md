@@ -18,13 +18,14 @@ bug-reports/
 ```
 
 ### Hierarchy Breakdown:
-- **`<type>`**: Category of defect (`installation`, `run-time`, `security`, `marketing`).
+- **`<type>`**: Category of defect (`compilation`, `installation`, `run-time`, `security`, `marketing`).
 - **`<os>`**: Operating system family (`linux`, `macos`, `windows`, `all`).
 - **`<distro>`**: Distribution or platform (`fedora`, `rocky`, `ubuntu`, `debian`, `almalinux`, `macos`, `windows`, `all`).
 - **`<version>`**: Distribution release or OS version (`44`, `45`, `10.0`, `24.04`, `15`, `11`, `all`).
 - **`<arch>`**: CPU architecture (`x86_64`, `arm64`, `all`).
 
 ### Canonical Examples:
+- `bug-reports/compilation/linux/fedora/45/x86_64/`
 - `bug-reports/installation/linux/fedora/45/x86_64/`
 - `bug-reports/installation/macos/macos/15/arm64/`
 - `bug-reports/run-time/windows/windows/11/x86_64/`
@@ -38,7 +39,7 @@ Each ticket is formatted in standard Markdown with YAML frontmatter:
 ---
 ticket_id: "BUG-YYYYMMDD_HHMMSS"
 title: "Concise summary of the defect"
-type: "installation"          # installation | run-time | security | marketing
+type: "compilation"           # compilation | installation | run-time | security | marketing
 status: "open"                # open | in-progress | pending | resolved | closed
 severity: "high"              # low | medium | high | critical
 project: "auto-updates"
