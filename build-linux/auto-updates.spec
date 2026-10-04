@@ -1,5 +1,5 @@
 Name:           auto-updates
-Version:        1.4.2
+Version:        1.4.3
 Release:        1%{?dist}
 Summary:        CLI and automated system updater for Fedora, Rocky Linux, and AlmaLinux
 
@@ -167,6 +167,9 @@ systemctl daemon-reload 2>/dev/null || true
 %ghost %attr(0640, root, root) %{_localstatedir}/log/auto-updates.log
 
 %changelog
+* Sun Oct 04 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.4.3-1
+- Fix pre-build test gate in build_deb.sh on Debian 13 and Ubuntu 26.04: adapt test_cli.sh for Debian/Ubuntu reboot flag checks and allow cross-platform testing via AUTO_UPDATES_OS_TYPE and REBOOT_REQUIRED_FILE.
+
 * Thu Oct 01 2026 Steve Rock <steve.rock@wheelhouser.com> - 1.4.2-1
 - Fix false-positive reboot detection on DNF5 and Fedora: prioritize needs-restarting without -C and pass --disablerepo='*' to dnf5 to avoid mirror connection timeouts and cache-miss errors.
 - Ensure only exit code 1 triggers REBOOT REQUIRED; exit code 0 or missing cache returns Clean status.

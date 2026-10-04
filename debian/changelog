@@ -1,3 +1,9 @@
+auto-updates (1.4.3-1) unstable; urgency=medium
+
+  * Fix pre-build test gate in build_deb.sh on Debian 13 and Ubuntu 26.04: adapt test_cli.sh for Debian/Ubuntu reboot flag checks and allow cross-platform testing via AUTO_UPDATES_OS_TYPE and REBOOT_REQUIRED_FILE.
+
+ -- Steve Rock <steve.rock@wheelhouser.com>  Sun, 04 Oct 2026 10:20:00 -0400
+
 auto-updates (1.4.2-1) unstable; urgency=medium
 
   * Fix false-positive reboot detection on DNF5 and Fedora: prioritize dnf5 with --disablerepo='*' and needs-restarting.

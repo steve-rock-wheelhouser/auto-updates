@@ -482,23 +482,24 @@ check_shutdown_inhibitors() {
 if [ "$DRY_RUN" = false ]; then
     REBOOT_NEEDED=false
     if [ "$REBOOT" = "when-needed" ]; then
+        deb_reboot_file="${REBOOT_REQUIRED_FILE:-/run/reboot-required}"
         if [ "$BACKEND" = "apt" ]; then
-            if [ -f /run/reboot-required ] || [ -f /var/run/reboot-required ]; then
+            if [ -f "$deb_reboot_file" ] || [ -f /var/run/reboot-required ]; then
                 REBOOT_NEEDED=true
             fi
         elif command -v dnf5 &>/dev/null && dnf5 needs-restarting --help &>/dev/null; then
-            local dnf5_rc=0
+            dnf5_rc=0
             dnf5 --disablerepo='*' needs-restarting -r &>/dev/null || dnf5_rc=$?
             if [ "$dnf5_rc" -eq 1 ]; then
                 REBOOT_NEEDED=true
             fi
         elif command -v needs-restarting &>/dev/null; then
-            local nr_rc=0
+            nr_rc=0
             needs-restarting -r &>/dev/null || nr_rc=$?
             if [ "$nr_rc" -eq 1 ]; then
                 REBOOT_NEEDED=true
             fi
-        elif [ -f /run/reboot-required ] || [ -f /var/run/reboot-required ]; then
+        elif [ -f "$deb_reboot_file" ] || [ -f /var/run/reboot-required ]; then
             REBOOT_NEEDED=true
         else
             log "WARN" "Reboot policy is 'when-needed' but 'needs-restarting' was not found. Please install yum-utils."

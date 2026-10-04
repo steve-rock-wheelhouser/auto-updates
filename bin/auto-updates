@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-VERSION="1.4.2"
+VERSION="1.4.3"
 CONF_FILE="/etc/auto-updates/auto-updates.conf"
 DNF_AUTO_CONF="/etc/dnf/automatic.conf"
 RUNNER_BIN="/usr/libexec/auto-updates-runner"
@@ -225,7 +225,9 @@ cmd_status() {
     # Backend detection
     local backend="Unknown"
     local os_type="rpm"
-    if [ -f /etc/os-release ]; then
+    if [ -n "${AUTO_UPDATES_OS_TYPE:-}" ]; then
+        os_type="${AUTO_UPDATES_OS_TYPE}"
+    elif [ -f /etc/os-release ]; then
         local os_id=""
         os_id=$(grep -E '^(ID|ID_LIKE)=' /etc/os-release 2>/dev/null || true)
         case "$os_id" in
@@ -296,17 +298,21 @@ cmd_status() {
     # Live reboot status (queries needs-restarting on RPM, or /run/reboot-required on Debian/Ubuntu)
     local reboot_status="Checking..."
     local reboot_color="$GREEN"
-    if [ -f /run/reboot-required ] || [ -f /var/run/reboot-required ]; then
-        local pkgs=""
-        if [ -f /run/reboot-required.pkgs ]; then
-            pkgs=$(head -n 5 /run/reboot-required.pkgs 2>/dev/null | tr '\n' ' ' | sed 's/ $//')
+    local deb_reboot_file="${REBOOT_REQUIRED_FILE:-/run/reboot-required}"
+    local deb_reboot_pkgs="${REBOOT_REQUIRED_PKGS_FILE:-/run/reboot-required.pkgs}"
+    if [ "$os_type" = "deb" ]; then
+        if [ -f "$deb_reboot_file" ] || [ -f /var/run/reboot-required ]; then
+            local pkgs=""
+            if [ -f "$deb_reboot_pkgs" ]; then
+                pkgs=$(head -n 5 "$deb_reboot_pkgs" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')
+            fi
+            reboot_status="REBOOT REQUIRED"
+            [ -n "$pkgs" ] && reboot_status+=" (Packages: $pkgs)"
+            reboot_color="$RED"
+        else
+            reboot_status="Clean (No reboot required)"
+            reboot_color="$GREEN"
         fi
-        reboot_status="REBOOT REQUIRED"
-        [ -n "$pkgs" ] && reboot_status+=" (Packages: $pkgs)"
-        reboot_color="$RED"
-    elif [ "$os_type" = "deb" ]; then
-        reboot_status="Clean (No reboot required)"
-        reboot_color="$GREEN"
     elif command -v dnf5 &>/dev/null && dnf5 needs-restarting --help &>/dev/null; then
         local dnf5_rc=0
         dnf5 --disablerepo='*' needs-restarting -r &>/dev/null || dnf5_rc=$?

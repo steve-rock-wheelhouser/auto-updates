@@ -133,7 +133,28 @@ echo "  ✔ System Reboot Status reported in status dashboard"
 MOCK_DIR=$(mktemp -d)
 trap 'rm -rf "${MOCK_DIR}"' EXIT
 
-# --- DNF5 Reboot Checks ---
+# --- Debian / Ubuntu Reboot Checks ---
+# Case 1: Clean (no reboot required file)
+DEB_CLEAN_OUT=$(AUTO_UPDATES_OS_TYPE="deb" REBOOT_REQUIRED_FILE="${MOCK_DIR}/nonexistent-flag" "${REPO_ROOT}/bin/auto-updates" status < /dev/null)
+if [[ "${DEB_CLEAN_OUT}" != *"Clean (No reboot required)"* ]]; then
+    echo "FAIL: Expected 'Clean (No reboot required)' on Debian/Ubuntu when reboot file absent, got:" >&2
+    echo "${DEB_CLEAN_OUT}" >&2
+    exit 1
+fi
+echo "  ✔ Debian/Ubuntu without reboot-required correctly reports 'Clean (No reboot required)'"
+
+# Case 2: Reboot required (flag file exists)
+touch "${MOCK_DIR}/reboot-required"
+echo -e "linux-image-generic\nlibc6" > "${MOCK_DIR}/reboot-required.pkgs"
+DEB_REBOOT_OUT=$(AUTO_UPDATES_OS_TYPE="deb" REBOOT_REQUIRED_FILE="${MOCK_DIR}/reboot-required" REBOOT_REQUIRED_PKGS_FILE="${MOCK_DIR}/reboot-required.pkgs" "${REPO_ROOT}/bin/auto-updates" status < /dev/null)
+if [[ "${DEB_REBOOT_OUT}" != *"REBOOT REQUIRED"* ]] || [[ "${DEB_REBOOT_OUT}" != *"linux-image-generic"* ]]; then
+    echo "FAIL: Expected 'REBOOT REQUIRED (Packages: linux-image-generic libc6)' on Debian/Ubuntu when reboot file exists, got:" >&2
+    echo "${DEB_REBOOT_OUT}" >&2
+    exit 1
+fi
+echo "  ✔ Debian/Ubuntu with reboot-required correctly reports 'REBOOT REQUIRED' and packages"
+
+# --- DNF5 Reboot Checks (RPM Mode) ---
 # Mock DNF5 that supports needs-restarting
 cat <<'EOF' > "${MOCK_DIR}/dnf5"
 #!/bin/bash
@@ -148,8 +169,8 @@ exit 2
 EOF
 chmod +x "${MOCK_DIR}/dnf5"
 
-# Case 1: DNF5 returns 0 (Clean)
-CLEAN_OUT=$(MOCK_DNF5_EXIT=0 PATH="${MOCK_DIR}:${PATH}" "${REPO_ROOT}/bin/auto-updates" status < /dev/null)
+# Case 3: DNF5 returns 0 (Clean)
+CLEAN_OUT=$(AUTO_UPDATES_OS_TYPE="rpm" REBOOT_REQUIRED_FILE="${MOCK_DIR}/nonexistent-flag" MOCK_DNF5_EXIT=0 PATH="${MOCK_DIR}:${PATH}" "${REPO_ROOT}/bin/auto-updates" status < /dev/null)
 if [[ "${CLEAN_OUT}" != *"Clean (No reboot required)"* ]]; then
     echo "FAIL: Expected 'Clean (No reboot required)' when DNF5 exits 0, got:" >&2
     echo "${CLEAN_OUT}" >&2
@@ -157,8 +178,8 @@ if [[ "${CLEAN_OUT}" != *"Clean (No reboot required)"* ]]; then
 fi
 echo "  ✔ DNF5 with --disablerepo='*' exit 0 correctly reports 'Clean (No reboot required)'"
 
-# Case 2: DNF5 returns 1 (Reboot required)
-REBOOT_OUT=$(MOCK_DNF5_EXIT=1 PATH="${MOCK_DIR}:${PATH}" "${REPO_ROOT}/bin/auto-updates" status < /dev/null)
+# Case 4: DNF5 returns 1 (Reboot required)
+REBOOT_OUT=$(AUTO_UPDATES_OS_TYPE="rpm" REBOOT_REQUIRED_FILE="${MOCK_DIR}/nonexistent-flag" MOCK_DNF5_EXIT=1 PATH="${MOCK_DIR}:${PATH}" "${REPO_ROOT}/bin/auto-updates" status < /dev/null)
 if [[ "${REBOOT_OUT}" != *"REBOOT REQUIRED"* ]]; then
     echo "FAIL: Expected 'REBOOT REQUIRED' when DNF5 exits 1, got:" >&2
     echo "${REBOOT_OUT}" >&2
@@ -166,8 +187,8 @@ if [[ "${REBOOT_OUT}" != *"REBOOT REQUIRED"* ]]; then
 fi
 echo "  ✔ DNF5 with --disablerepo='*' exit 1 correctly reports 'REBOOT REQUIRED'"
 
-# Case 3: DNF5 returns non-zero error (> 1, e.g. cache or network error) -> does NOT falsely report REBOOT REQUIRED
-ERR_OUT=$(MOCK_DNF5_EXIT=2 PATH="${MOCK_DIR}:${PATH}" "${REPO_ROOT}/bin/auto-updates" status < /dev/null)
+# Case 5: DNF5 returns non-zero error (> 1, e.g. cache or network error) -> does NOT falsely report REBOOT REQUIRED
+ERR_OUT=$(AUTO_UPDATES_OS_TYPE="rpm" REBOOT_REQUIRED_FILE="${MOCK_DIR}/nonexistent-flag" MOCK_DNF5_EXIT=2 PATH="${MOCK_DIR}:${PATH}" "${REPO_ROOT}/bin/auto-updates" status < /dev/null)
 if [[ "${ERR_OUT}" == *"REBOOT REQUIRED"* ]]; then
     echo "FAIL: DNF5 non-1 error code should not trigger REBOOT REQUIRED, got:" >&2
     echo "${ERR_OUT}" >&2
@@ -190,8 +211,8 @@ exit "${MOCK_NR_EXIT:-0}"
 EOF
 chmod +x "${MOCK_DIR}/needs-restarting"
 
-# Case 4: needs-restarting returns 0 (Clean)
-NR_CLEAN_OUT=$(MOCK_NR_EXIT=0 PATH="${MOCK_DIR}:${PATH}" "${REPO_ROOT}/bin/auto-updates" status < /dev/null)
+# Case 6: needs-restarting returns 0 (Clean)
+NR_CLEAN_OUT=$(AUTO_UPDATES_OS_TYPE="rpm" REBOOT_REQUIRED_FILE="${MOCK_DIR}/nonexistent-flag" MOCK_NR_EXIT=0 PATH="${MOCK_DIR}:${PATH}" "${REPO_ROOT}/bin/auto-updates" status < /dev/null)
 if [[ "${NR_CLEAN_OUT}" != *"Clean (No reboot required)"* ]]; then
     echo "FAIL: Expected 'Clean (No reboot required)' when needs-restarting exits 0, got:" >&2
     echo "${NR_CLEAN_OUT}" >&2
@@ -199,8 +220,8 @@ if [[ "${NR_CLEAN_OUT}" != *"Clean (No reboot required)"* ]]; then
 fi
 echo "  ✔ needs-restarting exit 0 correctly reports 'Clean (No reboot required)'"
 
-# Case 5: needs-restarting returns 1 (Reboot required)
-NR_REBOOT_OUT=$(MOCK_NR_EXIT=1 PATH="${MOCK_DIR}:${PATH}" "${REPO_ROOT}/bin/auto-updates" status < /dev/null)
+# Case 7: needs-restarting returns 1 (Reboot required)
+NR_REBOOT_OUT=$(AUTO_UPDATES_OS_TYPE="rpm" REBOOT_REQUIRED_FILE="${MOCK_DIR}/nonexistent-flag" MOCK_NR_EXIT=1 PATH="${MOCK_DIR}:${PATH}" "${REPO_ROOT}/bin/auto-updates" status < /dev/null)
 if [[ "${NR_REBOOT_OUT}" != *"REBOOT REQUIRED"* ]]; then
     echo "FAIL: Expected 'REBOOT REQUIRED' when needs-restarting exits 1, got:" >&2
     echo "${NR_REBOOT_OUT}" >&2

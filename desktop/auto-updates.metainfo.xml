@@ -53,6 +53,11 @@
     <binary>auto-updates</binary>
   </provides>
   <releases>
+    <release version="1.4.3" date="2026-10-04">
+      <description>
+        <p>Fix pre-build test gate in build_deb.sh on Debian 13 and Ubuntu 26.04: adapt test_cli.sh for Debian/Ubuntu reboot flag checks and allow cross-platform testing via AUTO_UPDATES_OS_TYPE and REBOOT_REQUIRED_FILE.</p>
+      </description>
+    </release>
     <release version="1.4.2" date="2026-10-01">
       <description>
         <p>Fix false-positive reboot detection on DNF5 and Fedora: prioritize dnf5 with --disablerepo='*' and needs-restarting without mirror cache dependencies, and ensure exit code 1 is required for reboot trigger.</p>
